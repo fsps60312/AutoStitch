@@ -77,6 +77,7 @@
     <Compile Include="ImageD_Providers\GrayImageD.cs" />
     <Compile Include="MatrixProviders\HarrisDetectorResponse.cs" />
     <Compile Include="ImageD_Providers\HeatImageD.cs" />
+    <Compile Include="PointsProviders\AdaptiveNonmaximalSuppression.cs" />
     <Compile Include="PointsProviders\LocalMaximum.cs" />
     <Compile Include="PointsProviders\SubpixelRefinement.cs" />
     <Compile Include="Providers\IImageD_Provider.cs" />

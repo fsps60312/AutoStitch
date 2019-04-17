@@ -38,7 +38,8 @@ namespace AutoStitch
             IPointsProvider
                 pp_harris_all = new PointsProviders.LocalMaximum(mp_harris, double.MinValue),
                 pp_harris_filtered = new PointsProviders.LocalMaximum(mp_harris, 10 * 3.0 / (255.0 * 255.0)),
-                pp_harris_refined=new PointsProviders.SubpixelRefinement(pp_harris_filtered,mp_harris);
+                pp_harris_eliminated = new PointsProviders.AdaptiveNonmaximalSuppression(pp_harris_filtered, 500),
+                pp_harris_refined = new PointsProviders.SubpixelRefinement(pp_harris_eliminated, mp_harris);
             IImageD_Provider
                 background=new ImageD_Providers.GrayImageD(mp_harris),
                 mp_merge_all = new ImageD_Providers.PlotPoints(
@@ -48,6 +49,10 @@ namespace AutoStitch
                 mp_merge_filtered = new ImageD_Providers.PlotPoints(
                                     background,
                                     pp_harris_filtered
+                                    ),
+                mp_merge_eliminated = new ImageD_Providers.PlotPoints(
+                                    background,
+                                    pp_harris_eliminated
                                     ),
                 mp_merge_refined = new ImageD_Providers.PlotPoints(
                                     background,
@@ -83,8 +88,8 @@ namespace AutoStitch
                                     },
                                     Children=
                                     {
-                                        new Button{Content="Run"}.Set(async()=>{await Task.Run(()=>  {mp_merge_filtered.GetImageD();mp_merge_refined.GetImageD(); mp_merge_all.GetImageD(); });LogPanel.Log("done."); }).Set(0,0),
-                                        new Button{Content="Reset"}.Set(async()=>{await Task.Run(()=>{mp_merge_filtered.Reset();mp_merge_refined.Reset();mp_merge_all.Reset(); });LogPanel.Log("reseted."); }).Set(0,1)
+                                        new Button{Content="Run"}.Set(async()=>{await Task.Run(()=>  {mp_merge_eliminated.GetImageD();mp_merge_filtered.GetImageD();mp_merge_refined.GetImageD(); mp_merge_all.GetImageD(); });LogPanel.Log("done."); }).Set(0,0),
+                                        new Button{Content="Reset"}.Set(async()=>{await Task.Run(()=>{mp_merge_eliminated.Reset();mp_merge_filtered.Reset();mp_merge_refined.Reset();mp_merge_all.Reset(); });LogPanel.Log("reseted."); }).Set(0,1)
                                     }
                                 },
                                 //(new ImageViewer(mp_r)),
@@ -97,6 +102,7 @@ namespace AutoStitch
                                 new ImageViewer(new MatrixProviders.Clamp( mp_harris,10 * 3.0 / (255.0 * 255.0),double.MaxValue)),
                                 new ImageViewer(mp_merge_all,false),
                                 new ImageViewer(mp_merge_filtered,false),
+                                new ImageViewer(mp_merge_eliminated,false),
                                 new ImageViewer(mp_merge_refined,false)
                             }
                         }
