@@ -116,9 +116,9 @@ namespace AutoStitch.MatrixProviders
         }
         abstract class GaussianBlurBase : MatrixProvider
         {
-            protected MatrixProvider provider;
+            protected IMatrixProvider provider;
             protected double ro;
-            protected GaussianBlurBase(MatrixProvider provider, double ro)
+            protected GaussianBlurBase(IMatrixProvider provider, double ro)
             {
                 this.provider = provider;
                 this.ro = ro;
@@ -137,7 +137,7 @@ namespace AutoStitch.MatrixProviders
     sealed class GaussianBlur : GaussianInternal.GaussianBlurBase
     {
         bool speedup;
-        public GaussianBlur(MatrixProvider provider, double ro,bool speedup=true) : base(speedup? new GaussianBlurY(new GaussianBlurX(provider, ro), ro):provider, ro) { this.speedup = speedup; }
+        public GaussianBlur(IMatrixProvider provider, double ro,bool speedup=true) : base(speedup? new GaussianBlurY(new GaussianBlurX(provider, ro), ro):provider, ro) { this.speedup = speedup; }
         protected override MyMatrix GetMatrixInternal()
         {
             if (speedup)
@@ -190,7 +190,7 @@ namespace AutoStitch.MatrixProviders
     }
     sealed class GaussianBlurX : GaussianInternal.GaussianBlurBase
     {
-        public GaussianBlurX(MatrixProvider provider, double ro) : base(provider, ro) { }
+        public GaussianBlurX(IMatrixProvider provider, double ro) : base(provider, ro) { }
         protected override MyMatrix GetMatrixInternal()
         {
             if (true)
@@ -244,7 +244,7 @@ namespace AutoStitch.MatrixProviders
     }
     sealed class GaussianBlurY : GaussianInternal.GaussianBlurBase
     {
-        public GaussianBlurY(MatrixProvider provider, double ro) : base(provider, ro) { }
+        public GaussianBlurY(IMatrixProvider provider, double ro) : base(provider, ro) { }
         protected override MyMatrix GetMatrixInternal()
         {
             if (true)

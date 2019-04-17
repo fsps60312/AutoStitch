@@ -11,6 +11,7 @@ namespace AutoStitch
     {
         event MatrixChangedEventHandler MatrixChanged;
         MyMatrix GetMatrix();
+        void Reset();
     }
     abstract class MatrixProvider : IMatrixProvider
     {

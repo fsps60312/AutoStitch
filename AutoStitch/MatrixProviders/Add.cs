@@ -8,9 +8,9 @@ namespace AutoStitch.MatrixProviders
 {
     class Add:MatrixProvider
     {
-        MatrixProvider provider0;
-        MatrixProvider[] providers;
-        public Add(MatrixProvider provider0, params MatrixProvider[] providers)
+        IMatrixProvider provider0;
+        IMatrixProvider[] providers;
+        public Add(IMatrixProvider provider0, params IMatrixProvider[] providers)
         {
             this.provider0 = provider0;
             this.providers = providers;

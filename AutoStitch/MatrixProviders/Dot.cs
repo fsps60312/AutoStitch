@@ -8,8 +8,8 @@ namespace AutoStitch.MatrixProviders
 {
     class Dot:MatrixProvider
     {
-        MatrixProvider provider1,provider2;
-        public Dot(MatrixProvider provider1,MatrixProvider provider2)
+        IMatrixProvider provider1,provider2;
+        public Dot(IMatrixProvider provider1,IMatrixProvider provider2)
         {
             this.provider1 = provider1;
             this.provider2 = provider2;

@@ -8,8 +8,8 @@ namespace AutoStitch.MatrixProviders
 {
     class DerivativeY : MatrixProvider
     {
-        MatrixProvider provider;
-        public DerivativeY(MatrixProvider provider)
+        IMatrixProvider provider;
+        public DerivativeY(IMatrixProvider provider)
         {
             this.provider = provider;
         }

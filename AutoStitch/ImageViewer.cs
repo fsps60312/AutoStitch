@@ -30,7 +30,7 @@ namespace AutoStitch
                 else LogPanel.Log("canceled.");
             };
         }
-        public ImageViewer(MatrixProvider provider):this()
+        public ImageViewer(IMatrixProvider provider):this()
         {
             provider.MatrixChanged += (matrix) => {
                 if (!this.Dispatcher.CheckAccess()) Dispatcher.Invoke(() => img.Source = matrix.ToHeatImage(1).ToBitmapSource());

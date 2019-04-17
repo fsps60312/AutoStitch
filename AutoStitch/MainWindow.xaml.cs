@@ -26,18 +26,32 @@ namespace AutoStitch
         private void InitializeViews()
         {
             source_image_panel = new SourceImagePanel();
-            MatrixProvider mp_r, mp_g, mp_b, mp_hr, mp_hg, mp_hb, mp_harris = null;
-            ImageD_Provider mp_merge=null;
-            mp_r = MatrixProviders.Filter.Red(source_image_panel);
-            mp_hr = new MatrixProviders.HarrisDetectorResponse(mp_r);
-            mp_g = MatrixProviders.Filter.Green(source_image_panel);
-            mp_hg = new MatrixProviders.HarrisDetectorResponse(mp_g);
-            mp_b = MatrixProviders.Filter.Blue(source_image_panel);
-            mp_hb = new MatrixProviders.HarrisDetectorResponse(mp_b);
-            mp_harris = new MatrixProviders.Clamp(new MatrixProviders.Add(mp_hr, mp_hg, mp_hb), 0, 1e-3);
-            mp_merge = new ImageD_Providers.Blend(
-                                    new ImageD_Providers.GrayImageD(new MatrixProviders.GrayScale(source_image_panel)),
-                                    new ImageD_Providers.HeatImageD(mp_harris)
+            IMatrixProvider
+                mp_r = MatrixProviders.Filter.Red(source_image_panel),
+                mp_hr = new MatrixProviders.HarrisDetectorResponse(mp_r),
+                mp_g = MatrixProviders.Filter.Green(source_image_panel),
+                mp_hg = new MatrixProviders.HarrisDetectorResponse(mp_g),
+                mp_b = MatrixProviders.Filter.Blue(source_image_panel),
+                mp_hb = new MatrixProviders.HarrisDetectorResponse(mp_b),
+                mp_harris = new MatrixProviders.Add(mp_hr, mp_hg, mp_hb),
+                mp_harris_debug = new MatrixProviders.Clamp(mp_harris, 0, 1e-3);
+            IPointsProvider
+                pp_harris_all = new PointsProviders.LocalMaximum(mp_harris, double.MinValue),
+                pp_harris_filtered = new PointsProviders.LocalMaximum(mp_harris, 10 * 3.0 / (255.0 * 255.0)),
+                pp_harris_refined=new PointsProviders.SubpixelRefinement(pp_harris_filtered,mp_harris);
+            IImageD_Provider
+                background=new ImageD_Providers.GrayImageD(mp_harris),
+                mp_merge_all = new ImageD_Providers.PlotPoints(
+                                    background,
+                                    pp_harris_all
+                                    ),
+                mp_merge_filtered = new ImageD_Providers.PlotPoints(
+                                    background,
+                                    pp_harris_filtered
+                                    ),
+                mp_merge_refined = new ImageD_Providers.PlotPoints(
+                                    background,
+                                    pp_harris_refined
                                     );
             this.Height = 500;
             this.Width = 800;
@@ -69,8 +83,8 @@ namespace AutoStitch
                                     },
                                     Children=
                                     {
-                                        new Button{Content="Run"}.Set(async()=>{await Task.Run(()=>  {mp_merge.GetImageD(); });LogPanel.Log("done."); }).Set(0,0),
-                                        new Button{Content="Reset"}.Set(async()=>{await Task.Run(()=>mp_merge.Reset());LogPanel.Log("reseted."); }).Set(0,1)
+                                        new Button{Content="Run"}.Set(async()=>{await Task.Run(()=>  {mp_merge_filtered.GetImageD();mp_merge_refined.GetImageD(); mp_merge_all.GetImageD(); });LogPanel.Log("done."); }).Set(0,0),
+                                        new Button{Content="Reset"}.Set(async()=>{await Task.Run(()=>{mp_merge_filtered.Reset();mp_merge_refined.Reset();mp_merge_all.Reset(); });LogPanel.Log("reseted."); }).Set(0,1)
                                     }
                                 },
                                 //(new ImageViewer(mp_r)),
@@ -79,8 +93,11 @@ namespace AutoStitch
                                 //(new ImageViewer(mp_hg)),
                                 //(new ImageViewer(mp_b)),
                                 //(new ImageViewer(mp_hb)),
-                                //(new ImageViewer(mp_harris)),
-                                (new ImageViewer(mp_merge,false))
+                                new ImageViewer(mp_harris),
+                                new ImageViewer(new MatrixProviders.Clamp( mp_harris,10 * 3.0 / (255.0 * 255.0),double.MaxValue)),
+                                new ImageViewer(mp_merge_all,false),
+                                new ImageViewer(mp_merge_filtered,false),
+                                new ImageViewer(mp_merge_refined,false)
                             }
                         }
                     }.Set(0,0),

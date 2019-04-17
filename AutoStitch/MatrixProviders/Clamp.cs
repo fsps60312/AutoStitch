@@ -8,9 +8,9 @@ namespace AutoStitch.MatrixProviders
 {
     class Clamp : MatrixProvider
     {
-        MatrixProvider provider;
+        IMatrixProvider provider;
         double mn, mx;
-        public Clamp(MatrixProvider provider,double mn,double mx)
+        public Clamp(IMatrixProvider provider,double mn,double mx)
         {
             this.provider = provider;
             this.mn = mn;

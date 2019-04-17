@@ -8,8 +8,8 @@ namespace AutoStitch.ImageD_Providers
 {
     class GrayImageD : ImageD_Provider
     {
-        MatrixProvider provider;
-        public GrayImageD(MatrixProvider provider)
+        IMatrixProvider provider;
+        public GrayImageD(IMatrixProvider provider)
         {
             this.provider = provider;
         }

@@ -8,9 +8,9 @@ namespace AutoStitch.ImageD_Providers
 {
     class HeatImageD : ImageD_Provider
     {
-        MatrixProvider provider;
+        IMatrixProvider provider;
         double exp;
-        public HeatImageD(MatrixProvider provider,double exp=1)
+        public HeatImageD(IMatrixProvider provider,double exp=1)
         {
             this.provider = provider;
             this.exp = exp;
