@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 
 namespace AutoStitch
 {
-    delegate void PointsChangedEventHandler(List<ImagePoint> points);
-    class ImagePoint:IComparable<ImagePoint>
+    public delegate void PointsChangedEventHandler(List<ImagePoint> points);
+    public class ImagePoint:IComparable<ImagePoint>
     {
         public double x { get; private set; }
         public double y { get; private set; }
@@ -25,11 +25,12 @@ namespace AutoStitch
             return importance.CompareTo(other.importance);
         }
     }
-    abstract class PointsProvider : IPointsProvider
+    public abstract class PointsProvider : IPointsProvider
     {
         public event PointsChangedEventHandler PointsChanged;
         private List<ImagePoint> ans = null;
-        public virtual void Reset() { ans = null; }
+        public virtual void Reset() { ResetSelf(); }
+        public void ResetSelf() { ans = null; }
         public List<ImagePoint> GetPoints()
         {
             if (ans == null)
@@ -46,5 +47,6 @@ namespace AutoStitch
         event PointsChangedEventHandler PointsChanged;
         List<ImagePoint> GetPoints();
         void Reset();
+        void ResetSelf();
     }
 }

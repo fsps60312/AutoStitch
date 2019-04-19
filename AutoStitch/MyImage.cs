@@ -119,6 +119,19 @@ namespace AutoStitch
     {
         public double[,] data { get; private set; }
         public MyMatrix(double[,] data) { this.data = data; }
+        private double add_color(int x, int y,  double ratio)
+        {
+            if (!(0 <= y && y < data.GetLength(0) && 0 <= x && x < data.GetLength(1))) return 0;
+            return ratio * data[y,x];
+        }
+        public double sample(double x, double y)
+        { // bgra
+            int xi = (int)x, yi = (int)y;
+            double dx = x - xi, dy = y - yi;
+            return
+                add_color(xi, yi, (1 - dx) * (1 - dy)) + add_color(xi + 1, yi, dx * (1 - dy)) +
+                add_color(xi, yi + 1, (1 - dx) * dy) + add_color(xi + 1, yi + 1, dx * dy);
+        }
     }
     public class MyImageD
     {
@@ -159,6 +172,25 @@ namespace AutoStitch
             dpi_y = _dpi_y;
             format = _format;
             palette = _palette;
+        }
+        private bool add_color(int x, int y, ref double r, ref double g, ref double b, double ratio)
+        {
+            if (!(0 <= y && y < height && 0 <= x && x < width)) return false;
+            int k = y * stride + x * 4;
+            r += ratio * data[k + 2];
+            g += ratio * data[k + 1];
+            b += ratio * data[k + 0];
+            return true;
+        }
+        public void sample(double x, double y, out double r, out double g, out double b)
+        { // bgra
+            int xi = (int)x, yi = (int)y;
+            double dx = x - xi, dy = y - yi;
+            r = g = b = 0;
+            add_color(xi, yi, ref r, ref g, ref b, (1 - dx) * (1 - dy));
+            add_color(xi + 1, yi, ref r, ref g, ref b, dx * (1 - dy));
+            add_color(xi, yi + 1, ref r, ref g, ref b, (1 - dx) * dy);
+            add_color(xi + 1, yi + 1, ref r, ref g, ref b, dx * dy);
         }
     }
     public class MyImage

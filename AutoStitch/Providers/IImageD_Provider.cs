@@ -12,12 +12,14 @@ namespace AutoStitch
         event ImageDChangedEventHandler ImageDChanged;
         MyImageD GetImageD();
         void Reset();
+        void ResetSelf();
     }
     abstract class ImageD_Provider : IImageD_Provider
     {
         public event ImageDChangedEventHandler ImageDChanged;
         private MyImageD ans = null;
-        public virtual void Reset() { ans = null; }
+        public virtual void Reset() { ResetSelf(); }
+        public void ResetSelf() { ans = null; }
         public MyImageD GetImageD()
         {
             if (ans == null)

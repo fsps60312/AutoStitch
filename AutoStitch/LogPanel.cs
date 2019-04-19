@@ -17,7 +17,7 @@ namespace AutoStitch
             this.Content = (scrollViewer = new ScrollViewer
             {
                 VerticalScrollBarVisibility = ScrollBarVisibility.Visible,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
                 Content = (stackPanel = new StackPanel
                 {
                     Orientation = Orientation.Vertical

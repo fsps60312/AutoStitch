@@ -63,7 +63,9 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Controls\PointSelect.cs" />
     <Compile Include="Extensions.cs" />
+    <Compile Include="ImageD_Providers\ImageD_Cache.cs" />
     <Compile Include="ImageD_Providers\PlotPoints.cs" />
     <Compile Include="MatrixProviders\Filter.cs" />
     <Compile Include="OpenCL.cs" />
@@ -79,6 +81,9 @@
     <Compile Include="ImageD_Providers\HeatImageD.cs" />
     <Compile Include="PointsProviders\AdaptiveNonmaximalSuppression.cs" />
     <Compile Include="PointsProviders\LocalMaximum.cs" />
+    <Compile Include="PointsProviders\MSOP_DescriptorVector.cs" />
+    <Compile Include="PointsProviders\MultiScaleHarrisCornerDetector.cs" />
+    <Compile Include="PointsProviders\PointsCache.cs" />
     <Compile Include="PointsProviders\SubpixelRefinement.cs" />
     <Compile Include="Providers\IImageD_Provider.cs" />
     <Compile Include="Providers\IImageProvider.cs" />
@@ -132,9 +137,7 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Harris\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\OpenCL.Net.2.2.9.0\build\net40\OpenCL.Net.targets" Condition="Exists('..\packages\OpenCL.Net.2.2.9.0\build\net40\OpenCL.Net.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

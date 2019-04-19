@@ -9,7 +9,7 @@ using Microsoft.Win32;
 
 namespace AutoStitch
 {
-    class SourceImagePanel : ContentControl,IImagesProvider,IImageProvider,IImageD_Provider
+    class SourceImagePanel : ContentControl
     {
         StackPanel stackPanel;
         public SourceImagePanel() { InitializeViews(); }
@@ -60,25 +60,19 @@ namespace AutoStitch
             foreach (var img in images) add_image(img);
         }
         List<MyImage> images = null;
-
-        public event ImageChangedEventHandler ImageChanged;
-        public event ImageDChangedEventHandler ImageDChanged;
         public List<MyImage> GetImages()
         {
             if (images == null) LogPanel.Log("Warning: [SourceImagePanel] images == null");
             return images;
         }
-        public void Reset() { }
-        public MyImage GetImage()
+        public IImageD_Provider GetImageD_Provider(int index)
         {
-            if (images == null) { LogPanel.Log("Warning: [SourceImagePanel] images == null"); return null; }
-            if (images.Count <= 0) { LogPanel.Log($"Warning: [SourceImagePanel] images.Count == {images.Count}"); return null; }
-            return images[0];
+            var ans= new ImageD_Providers.ImageD_Cache(() =>index< images?.Count ? images[index].ToImageD() : null);
+            ImageOpened += delegate { ans.ResetSelf(); ans.GetImageD(); };
+            return ans;
         }
-        public MyImageD GetImageD()
-        {
-            return GetImage()?.ToImageD();
-        }
+        delegate void ImageOpenedEventHandler();
+        event ImageOpenedEventHandler ImageOpened;
         public void OpenImages()
         {
             LogPanel.Log("Opening images...");
@@ -95,7 +89,7 @@ namespace AutoStitch
                         images.Add(new MyImage(f));
                     }
                     LogPanel.Log($"{ans.Length} files selected.");
-                    ImageChanged?.Invoke(GetImage());
+                    ImageOpened?.Invoke();
                     ShowImages();
                 }
                 else LogPanel.Log("No files selected.");
