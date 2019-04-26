@@ -70,6 +70,7 @@
     <Compile Include="ImageD_Providers\ImageD_Cache.cs" />
     <Compile Include="ImageD_Providers\PlotPoints.cs" />
     <Compile Include="MatrixProviders\Filter.cs" />
+    <Compile Include="MyDS\DisjointSets.cs" />
     <Compile Include="OpenCL.cs" />
     <Compile Include="MatrixProviders\Add.cs" />
     <Compile Include="ImageD_Providers\Blend.cs" />

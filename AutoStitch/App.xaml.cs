@@ -13,5 +13,14 @@ namespace AutoStitch
     /// </summary>
     public partial class App : Application
     {
+        public App()
+        {
+            Dispatcher.UnhandledException += Dispatcher_UnhandledException;
+        }
+        private void Dispatcher_UnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+        {
+            LogPanel.Log(e.Exception.ToString());
+            e.Handled = true;
+        }
     }
 }
