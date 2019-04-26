@@ -103,16 +103,16 @@ namespace AutoStitch.MatrixProviders
                                 CL.Cl.ReleaseEvent(clevent);
                                 MyCL.CheckErr(error, "Cl.EnqueueReadBuffer");
                                 MyCL.memcpy(ref output_byte_array, ref ans);
-                                CL.Cl.ReleaseCommandQueue(cmdQueue);
+                                //CL.Cl.ReleaseCommandQueue(cmdQueue);
                             }
-                            CL.Cl.ReleaseMemObject(data_buffer);
-                            CL.Cl.ReleaseMemObject(offsets_x_buffer);
-                            CL.Cl.ReleaseMemObject(offsets_y_buffer);
-                            CL.Cl.ReleaseMemObject(weights_buffer);
-                            CL.Cl.ReleaseMemObject(dims_buffer);
-                            CL.Cl.ReleaseMemObject(output_buffer);
+                            //CL.Cl.ReleaseMemObject(data_buffer);
+                            //CL.Cl.ReleaseMemObject(offsets_x_buffer);
+                            //CL.Cl.ReleaseMemObject(offsets_y_buffer);
+                            //CL.Cl.ReleaseMemObject(weights_buffer);
+                            //CL.Cl.ReleaseMemObject(dims_buffer);
+                            //CL.Cl.ReleaseMemObject(output_buffer);
                         }
-                        CL.Cl.ReleaseKernel(kernel);
+                        //CL.Cl.ReleaseKernel(kernel);
                     }
                 }
                 return ans;
