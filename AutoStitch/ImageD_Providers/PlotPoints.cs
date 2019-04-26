@@ -72,9 +72,9 @@ namespace AutoStitch.ImageD_Providers
                     Utils.GetHeatColor((p.importance - mn) / (mx - mn), out double r, out double g, out double b);
                     plot_cross(cross_img, p.x, p.y, r, g, b);
                 }
-                for(int i=0;i<imgd.height;i++)
+                Parallel.For(0, imgd.height, i =>
                 {
-                    for(int j=0;j<imgd.width;j++)
+                    for (int j = 0; j < imgd.width; j++)
                     {
                         int k = i * imgd.stride + j * 4;
                         double ratio = cross_img.data[k + 3];
@@ -82,7 +82,7 @@ namespace AutoStitch.ImageD_Providers
                         imgd.data[k + 1] = (1 - ratio) * imgd.data[k + 1] + cross_img.data[k + 1];
                         imgd.data[k + 2] = (1 - ratio) * imgd.data[k + 2] + cross_img.data[k + 2];
                     }
-                }
+                });
             }
             return imgd;
         }

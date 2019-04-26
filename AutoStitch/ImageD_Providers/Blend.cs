@@ -22,7 +22,7 @@ namespace AutoStitch.ImageD_Providers
         }
         private void scale_rgb_by_alpha(MyImageD img)
         {
-            for (int i = 0; i < img.height; i++)
+            Parallel.For(0, img.height, i =>
             {
                 for (int j = 0; j < img.width; j++)
                 {
@@ -33,26 +33,26 @@ namespace AutoStitch.ImageD_Providers
                     img.data[k + 1] /= alpha;
                     img.data[k + 2] /= alpha;
                 }
-            }
+            });
         }
         private void normalize_alpha(MyImageD img)
         {
-            for (int i = 0; i < img.height; i++)
-            {
-                for (int j = 0; j < img.width; j++)
-                {
-                    int k = i * img.stride + j * 4;
-                    //bgra
-                    double alpha = img.data[k + 3];
-                    if (alpha != 0)
-                    {
-                        img.data[k + 0] /= alpha;
-                        img.data[k + 1] /= alpha;
-                        img.data[k + 2] /= alpha;
-                        img.data[k + 3] = 1; // alpha
-                    }
-                }
-            }
+            Parallel.For(0, img.height, i =>
+              {
+                  for (int j = 0; j < img.width; j++)
+                  {
+                      int k = i * img.stride + j * 4;
+                      //bgra
+                      double alpha = img.data[k + 3];
+                      if (alpha != 0)
+                      {
+                          img.data[k + 0] /= alpha;
+                          img.data[k + 1] /= alpha;
+                          img.data[k + 2] /= alpha;
+                          img.data[k + 3] = 1; // alpha
+                      }
+                  }
+              });
         }
         protected override MyImageD GetImageDInternal()
         {
@@ -63,9 +63,9 @@ namespace AutoStitch.ImageD_Providers
                 MyImageD img = new MyImageD(provider.GetImageD());
                 System.Diagnostics.Trace.Assert(img.width == img_ans.width && img.height == img_ans.height && img.stride == img_ans.stride);
                 scale_rgb_by_alpha(img);
-                for (int i = 0; i < img.height; i++)
+                Parallel.For(0, img.height, i =>
                 {
-                    for(int j = 0; j < img.width; j++)
+                    for (int j = 0; j < img.width; j++)
                     {
                         int k = i * img.stride + j * 4;
                         img_ans.data[k + 0] += img.data[k + 0];
@@ -73,7 +73,7 @@ namespace AutoStitch.ImageD_Providers
                         img_ans.data[k + 2] += img.data[k + 2];
                         img_ans.data[k + 3] += img.data[k + 3];
                     }
-                }
+                });
             }
             normalize_alpha(img_ans);
             return img_ans;

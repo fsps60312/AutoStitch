@@ -32,7 +32,7 @@ namespace AutoStitch.MatrixProviders
                 System.Diagnostics.Trace.Assert(Extensions.AllTheSame(data_xx.GetLength(0), data_xy.GetLength(0), data_yy.GetLength(0)));
                 System.Diagnostics.Trace.Assert(Extensions.AllTheSame(data_xx.GetLength(1), data_xy.GetLength(1), data_yy.GetLength(1)));
                 double[,] data = new double[data_xx.GetLength(0), data_xx.GetLength(1)];
-                for (int i = 0; i < data.GetLength(0); i++)
+                Parallel.For(0, data.GetLength(0), i =>
                 {
                     for (int j = 0; j < data.GetLength(1); j++)
                     {
@@ -43,7 +43,7 @@ namespace AutoStitch.MatrixProviders
                         // Harmonic mean
                         data[i, j] = (a00 * a11 - a01 * a01) / (a00 + a11);
                     }
-                }
+                });
                 return new MyMatrix(data);
             }
         }

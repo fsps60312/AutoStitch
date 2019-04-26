@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace AutoStitch.PointsProviders
 {
-    public class MSOP_DescriptorVector:PointsProvider
+    public class MSOP_DescriptorVector :PointsProvider<MSOP_DescriptorVector.Descriptor>
     {
         public class Descriptor
         {
@@ -25,6 +25,35 @@ namespace AutoStitch.PointsProviders
                 }
                 return Math.Sqrt(ans);
             }
+            public bool try_match(List<ImagePoint<Descriptor>>points,out ImagePoint matched_point)
+            {
+                var main_descriptor = this;
+                ImagePoint<Descriptor> nearst = null;
+                double first_min = double.MaxValue, second_min = double.MaxValue;
+                foreach (var p in points)
+                {
+                    double dis = main_descriptor.difference(p.content);
+                    if (dis < first_min)
+                    {
+                        second_min = first_min;
+                        first_min = dis;
+                        nearst = p;
+                    }
+                    else if (dis < second_min) second_min = dis;
+                }
+                if (first_min / second_min < 0.8)
+                {
+                    //LogPanel.Log($"nearst feature diff = {main_descriptor.difference(nearst.content)}");
+                    matched_point = nearst;
+                    return true;
+                }
+                else
+                {
+                    //LogPanel.Log($"nearst feature too similar, no match!");
+                    matched_point = null;
+                    return false;
+                }
+            }
         }
         PointsProvider points_provider;
         MatrixProvider mat_provider, dx_provider,dy_provider;
@@ -39,7 +68,7 @@ namespace AutoStitch.PointsProviders
         protected override List<ImagePoint> GetPointsInternal()
         {
             MyMatrix image = mat_provider.GetMatrix(), dx_mat = dx_provider.GetMatrix(), dy_mat = dy_provider.GetMatrix();
-            List<ImagePoint> ans = new List<ImagePoint>();
+            List<ImagePoint<Descriptor>> ans = new List<ImagePoint<Descriptor>>();
             foreach(ImagePoint p in points_provider.GetPoints())
             {
                 double
@@ -62,9 +91,9 @@ namespace AutoStitch.PointsProviders
                 vec_flat = vec_flat.Select(v => (v - mu) / ro).ToArray();
                 double[,] vec = new double[8, 8];
                 for (int i = 0; i < 64; i++) vec[i / 8, i % 8] = vec_flat[i];
-                ans.Add(new ImagePoint(p.x, p.y, p.importance, new Descriptor(vec)));
+                ans.Add(new ImagePoint<Descriptor>(p.x, p.y, p.importance, new Descriptor(vec)));
             }
-            return ans;
+            return ans.Cast<ImagePoint>().ToList();
         }
         public override void Reset()
         {

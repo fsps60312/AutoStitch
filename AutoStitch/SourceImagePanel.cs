@@ -12,12 +12,15 @@ namespace AutoStitch
     class SourceImagePanel : ContentControl
     {
         StackPanel stackPanel;
-        public SourceImagePanel() { InitializeViews(); }
-        void InitializeViews()
+        public SourceImagePanel(bool is_horizontal=true) { InitializeViews(is_horizontal); }
+        void InitializeViews(bool is_horizontal)
         {
-            this.MinHeight = 200;
-            this.MaxHeight = 300;
-            this.Content =new Grid
+            if (is_horizontal)
+            {
+                this.MinHeight = 200;
+                this.MaxHeight = 300;
+            }
+            this.Content =is_horizontal? new Grid
             {
                 ColumnDefinitions=
                 {
@@ -34,8 +37,28 @@ namespace AutoStitch
                     {
                         HorizontalScrollBarVisibility = ScrollBarVisibility.Visible,
                         VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
-                        Content = (stackPanel = new StackPanel { Orientation = Orientation.Horizontal })
+                        Content = (stackPanel = new StackPanel { Orientation = Orientation.Horizontal})
                     }.Set(0,1)
+                }
+            }:new Grid
+            {
+                RowDefinitions =
+                {
+                    new RowDefinition{Height=new GridLength(1,GridUnitType.Auto)},
+                    new RowDefinition{Height=new GridLength(1,GridUnitType.Star)}
+                },
+                Children =
+                {
+                    new Button
+                    {
+                        Content="Open"
+                    }.Set(()=>OpenImages()).Set(0,0),
+                    new ScrollViewer
+                    {
+                        HorizontalScrollBarVisibility =ScrollBarVisibility.Disabled,
+                        VerticalScrollBarVisibility =ScrollBarVisibility.Visible,
+                        Content = (stackPanel = new StackPanel { Orientation =Orientation.Vertical})
+                    }.Set(1,0)
                 }
             };
         }

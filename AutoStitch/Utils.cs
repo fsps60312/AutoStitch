@@ -8,6 +8,15 @@ namespace AutoStitch
 {
     public static class Utils
     {
+        static Random rand = new Random();
+        public static double RandDouble() { return rand.NextDouble(); }
+        /// <summary>
+        /// return a number between [minValue, maxValue-1]
+        /// </summary>
+        /// <param name="minValue">inclusive</param>
+        /// <param name="maxValue">exclusive</param>
+        /// <returns></returns>
+        public static int Rand(int minValue,int maxValue) { return rand.Next(minValue, maxValue); }
         public static void GetHeatColor(double v, out double r, out double g, out double b)
         {
             if (v < 0) r = g = b = 0;
@@ -36,6 +45,36 @@ namespace AutoStitch
                 b = 0;
             }
             else r = g = b = 1;
+        }
+        /// <summary>
+        /// let the points vote for the best average point without outliners
+        /// </summary>
+        /// <param name="points">the points</param>
+        /// <param name="tolerance">maximal distance that a point will accept a point</param>
+        /// <param name="tries"></param>
+        /// <param name="accept_ratio">minimum propotion of acceptance that a point is selected</param>
+        /// <param name="accept_threshold">mimumum number of acceptances that a point is selected</param>
+        /// <returns></returns>
+        public static Tuple<double, double> Vote(List<Tuple<double, double>> points,double tolerance, out int max_num_inliners, int tries = 10)
+        {
+            max_num_inliners = 0;
+            Tuple<double, double> candidate = null;
+            var accepts = new Func<Tuple<double, double>, Tuple<double, double>, bool>((p, q) =>
+                  {
+                      double dx = p.Item1 - q.Item1;
+                      double dy = p.Item2 - q.Item2;
+                      double d = dx * dx + dy * dy;
+                      return d <= tolerance * tolerance;
+                  });
+            for(int i=0;i<tries;i++)
+            {
+                var point = points[Rand(0, points.Count)];
+                int num_inliners = points.Sum(p => accepts(p, point) ? 1 : 0);
+                if (num_inliners > max_num_inliners) { max_num_inliners = num_inliners; candidate = point; }
+            }
+            System.Diagnostics.Trace.Assert(candidate != null);
+            List<Tuple<double, double>> inliners = points.Where(p => accepts(p, candidate)).ToList();
+            return new Tuple<double, double>(inliners.Sum(p => p.Item1) / inliners.Count, inliners.Sum(p => p.Item2) / inliners.Count);
         }
     }
 }

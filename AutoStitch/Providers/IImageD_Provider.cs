@@ -18,6 +18,7 @@ namespace AutoStitch
     {
         public event ImageDChangedEventHandler ImageDChanged;
         private MyImageD ans = null;
+
         public virtual void Reset() { ResetSelf(); }
         public void ResetSelf() { ans = null; }
         public MyImageD GetImageD()

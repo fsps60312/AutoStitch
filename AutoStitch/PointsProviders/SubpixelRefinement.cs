@@ -55,7 +55,7 @@ namespace AutoStitch.PointsProviders
                     dx = -(dfyy * dfx + (-dfxy) * dfy) / det,
                     dy = -((-dfxy) * dfx + dfxx * dfy) / det;
                 double x = x0 + dx, y = y0 + dy;
-                ans.Add(new ImagePoint(x, y, p.importance + dx * dfx + dy * dfy + dx * dx * dfxx + dx * dy * dfy + dy * dy * dfyy, p.content));
+                ans.Add(new ImagePoint(x, y, p.importance + dx * dfx + dy * dfy + dx * dx * dfxx + dx * dy * dfy + dy * dy * dfyy));
             }
             return ans;
         }

@@ -28,7 +28,7 @@ namespace AutoStitch
             LogPanel.Log($"min heat: {mn.ToString("E")}");
             LogPanel.Log($"max heat: {mx.ToString("E")}");
             double[] ans = new double[image.data.Length * 4];
-            for (int i = 0; i < image.data.GetLength(0); i++)
+            Parallel.For(0, image.data.GetLength(0), i =>
             {
                 for (int j = 0; j < image.data.GetLength(1); j++)
                 {
@@ -40,13 +40,13 @@ namespace AutoStitch
                     ans[k + 2] = r;
                     ans[k + 3] = 1;
                 }
-            }
+            });
             return new MyImageD(ans, image.data.GetLength(1), image.data.GetLength(0), image.data.GetLength(1) * 4, 300, 300, PixelFormats.Bgra32, null);
         }
         public static MyImageD ToGrayImageD(this MyMatrix image)
         {
             double mx = double.MinValue, mn = double.MaxValue;
-            for (int i = 0; i < image.data.GetLength(0); i++)
+            for(int i=0;i< image.data.GetLength(0);i++)
             {
                 for (int j = 0; j < image.data.GetLength(1); j++)
                 {
@@ -58,7 +58,7 @@ namespace AutoStitch
             LogPanel.Log($"min heat: {mn.ToString("E")}");
             LogPanel.Log($"max heat: {mx.ToString("E")}");
             double[] ans = new double[image.data.Length * 4];
-            for (int i = 0; i < image.data.GetLength(0); i++)
+            Parallel.For(0, image.data.GetLength(0), i =>
             {
                 for (int j = 0; j < image.data.GetLength(1); j++)
                 {
@@ -70,7 +70,7 @@ namespace AutoStitch
                     ans[k + 2] = scalar;
                     ans[k + 3] = 1;
                 }
-            }
+            });
             return new MyImageD(ans, image.data.GetLength(1), image.data.GetLength(0), image.data.GetLength(1) * 4, 300, 300, PixelFormats.Bgra32, null);
         }
         public static MyImage ToHeatImage(this MyMatrix image,double exp) { return image.ToHeatImageD(exp).ToImage(); }
@@ -80,14 +80,14 @@ namespace AutoStitch
         public static MyMatrix ToMatrix(this MyImageD image)
         {
             double[,] data = new double[image.height, image.width];
-            for (int i = 0; i < image.height; i++)
+            Parallel.For(0, image.height, i =>
             {
                 for (int j = 0; j < image.width; j++)
                 {
                     int k = i * image.stride + j * 4;
                     data[i, j] = image.data[k + 0] + image.data[k + 1] + image.data[k + 2] + image.data[k + 3];
                 }
-            }
+            });
             return new MyMatrix(data);
         }
         public static MyImage ToImage(this MyImageD image_d)
@@ -99,14 +99,14 @@ namespace AutoStitch
         public static MyMatrix ToMatrix(this MyImage image)
         {
             double[,]data = new double[image.height, image.width];
-            for (int i = 0; i < image.height; i++)
+            Parallel.For(0, image.height, i =>
             {
                 for (int j = 0; j < image.width; j++)
                 {
                     int k = i * image.stride + j * 4;
                     data[i, j] = image.data[k + 0] + image.data[k + 1] + image.data[k + 2] + image.data[k + 3];
                 }
-            }
+            });
             return new MyMatrix(data);
         }
         public static MyImageD ToImageD(this MyImage image)
@@ -126,7 +126,7 @@ namespace AutoStitch
         }
         public double sample(double x, double y)
         { // bgra
-            int xi = (int)x, yi = (int)y;
+            int xi = (int)Math.Floor(x), yi = (int)Math.Floor(y);
             double dx = x - xi, dy = y - yi;
             return
                 add_color(xi, yi, (1 - dx) * (1 - dy)) + add_color(xi + 1, yi, dx * (1 - dy)) +
@@ -175,6 +175,7 @@ namespace AutoStitch
         }
         private bool add_color(int x, int y, ref double r, ref double g, ref double b, double ratio)
         {
+            if (ratio == 0) return true;
             if (!(0 <= y && y < height && 0 <= x && x < width)) return false;
             int k = y * stride + x * 4;
             r += ratio * data[k + 2];
@@ -182,15 +183,17 @@ namespace AutoStitch
             b += ratio * data[k + 0];
             return true;
         }
-        public void sample(double x, double y, out double r, out double g, out double b)
+        public bool sample(double x, double y, out double r, out double g, out double b)
         { // bgra
-            int xi = (int)x, yi = (int)y;
+            int xi = (int)Math.Floor(x), yi = (int)Math.Floor(y);
             double dx = x - xi, dy = y - yi;
+            //System.Diagnostics.Trace.Assert(xi <= x && x <= xi + 1 && yi <= y && y <= yi + 1);
             r = g = b = 0;
-            add_color(xi, yi, ref r, ref g, ref b, (1 - dx) * (1 - dy));
-            add_color(xi + 1, yi, ref r, ref g, ref b, dx * (1 - dy));
-            add_color(xi, yi + 1, ref r, ref g, ref b, (1 - dx) * dy);
-            add_color(xi + 1, yi + 1, ref r, ref g, ref b, dx * dy);
+            return
+                add_color(xi, yi, ref r, ref g, ref b, (1 - dx) * (1 - dy)) &
+                add_color(xi + 1, yi, ref r, ref g, ref b, dx * (1 - dy)) &
+                add_color(xi, yi + 1, ref r, ref g, ref b, (1 - dx) * dy) &
+                add_color(xi + 1, yi + 1, ref r, ref g, ref b, dx * dy);
         }
     }
     public class MyImage

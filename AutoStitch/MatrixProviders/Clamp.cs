@@ -24,7 +24,10 @@ namespace AutoStitch.MatrixProviders
         protected override MyMatrix GetMatrixInternal()
         {
             double[,] data = (double[,])provider.GetMatrix().data.Clone();
-            for (int i = 0; i < data.GetLength(0); i++) for (int j = 0; j < data.GetLength(1); j++) data[i, j] = Math.Max(mn, Math.Min(mx, data[i, j]));
+            Parallel.For(0, data.GetLength(0), i =>
+            {
+                for (int j = 0; j < data.GetLength(1); j++) data[i, j] = Math.Max(mn, Math.Min(mx, data[i, j]));
+            });
             return new MyMatrix(data);
         }
     }

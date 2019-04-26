@@ -28,13 +28,13 @@ namespace AutoStitch.MatrixProviders
             {
                 var addi = provider.GetMatrix().data;
                 System.Diagnostics.Trace.Assert(addi.GetLength(0) == data.GetLength(0) && addi.GetLength(1) == data.GetLength(1));
-                for(int i=0;i<data.GetLength(0);i++)
-                {
-                    for(int j=0;j<data.GetLength(1);j++)
-                    {
-                        data[i, j] += addi[i, j];
-                    }
-                }
+                Parallel.For(0, data.GetLength(0), i =>
+                 {
+                     for (int j = 0; j < data.GetLength(1); j++)
+                     {
+                         data[i, j] += addi[i, j];
+                     }
+                 });
             }
             return new MyMatrix(data);
         }

@@ -23,13 +23,13 @@
         {
             var image = provider.GetImageD();
             double[,] data = new double[image.height, image.width];
-            for (int i = 0; i < data.GetLength(0); i++)
+            System.Threading.Tasks.Parallel.For(0, data.GetLength(0), i =>
             {
                 for (int j = 0; j < data.GetLength(1); j++)
                 {
                     data[i, j] = image.data[i * image.stride + j * 4 + color_channel];
                 }
-            }
+            });
             return new MyMatrix(data);
         }
     }
