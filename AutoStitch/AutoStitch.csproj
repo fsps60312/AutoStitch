@@ -82,7 +82,10 @@
     <Compile Include="ImageD_Providers\GrayImageD.cs" />
     <Compile Include="MatrixProviders\HarrisDetectorResponse.cs" />
     <Compile Include="ImageD_Providers\HeatImageD.cs" />
+    <Compile Include="Pages\CylinderPage.CorrectiveCylinderImages.cs" />
     <Compile Include="Pages\CylinderPage.cs" />
+    <Compile Include="Pages\CylinderPage.CylinderImage.cs" />
+    <Compile Include="Pages\CylinderPage.CylinderImages.cs" />
     <Compile Include="Pages\PlanePage.cs" />
     <Compile Include="Pages\PlaneSpringPage.cs" />
     <Compile Include="Pages\TestPage.cs" />
