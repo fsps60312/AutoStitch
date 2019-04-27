@@ -115,5 +115,13 @@ namespace AutoStitch
                 Marshal.Copy(source, 0, (IntPtr)ptr, source.Length);
             }
         }
+        public unsafe static void memcpy(ref byte[] source, ref int[] target)
+        {
+            System.Diagnostics.Trace.Assert(source.Length == Marshal.SizeOf(typeof(int)) * target.Length);
+            fixed (int* ptr = target)
+            {
+                Marshal.Copy(source, 0, (IntPtr)ptr, source.Length);
+            }
+        }
     }
 }

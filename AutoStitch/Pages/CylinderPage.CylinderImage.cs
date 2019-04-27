@@ -9,6 +9,157 @@ namespace AutoStitch.Pages
         {
             //  [   αcosθ   -αsinθ  x'  ][x]   [xαcosθ-yαsinθ+x']
             //  [   αsinθ   αcosθ   y'  ][y] = [xαsinθ+yαcosθ+y']
+            //  [   p       q       1   ][1]   [    xp+qy+1     ]
+            //  h=((xαsinθ+yαcosθ+y')/(xp+qy+1))/f
+            //  w=t+atan(((xαcosθ-yαsinθ+x')/(xp+qy+1))/f)
+            //  params: α, θ, x', y', f, t
+            //  have: pairwise (h,w), (H,W)
+            //  minimize: β(h-H)^2+(w-W)^2
+            //
+            //  d: β(h-H)(dh-dH)+(w-W)(dw-dW)=0
+            //*  dh/dα:  ((xsinθ+ycosθ)/(xp+qy+1))/f
+            //  dw/dα:  ((xcosθ-ysinθ)/f)/(1+((xαcosθ-yαsinθ+x')/f)^2)
+            //  dh/dθ:  (xαcosθ-yαsinθ)/f
+            //  dw/dθ:  ((-xαsinθ-yαcosθ)/f)/(1+((xαcosθ-yαsinθ+x')/f)^2)
+            //  dh/dx': 0
+            //  dw/dx': (1/f)/(1+((xαcosθ-yαsinθ+x')/f)^2)
+            //  dh/dy': 1/f
+            //  dw/dy': 0
+            //  dh/df:  -(xαsinθ+yαcosθ+y')/f^2
+            //  dw/df:  (-(xαcosθ-yαsinθ+x')/f^2)/(1+((xαcosθ-yαsinθ+x')/f)^2)
+            //  dh/dt:  0
+            //  dw/dt:  1
+            /// <summary>
+            /// 
+            /// </summary>
+            /// <param name="beta"></param>
+            /// <param name="matches">matched points of image positions</param>
+            /// <param name="alpha"></param>
+            /// <param name="theta"></param>
+            /// <param name="dx"></param>
+            /// <param name="dy"></param>
+            /// <param name="df"></param>
+            /// <param name="dt"></param>
+            public void get_derivatives(double beta, List<Tuple<Tuple<double, double>, Tuple<double, double>, CylinderImage>> matches, out double alpha, out double theta, out double dx, out double dy, out double df, out double dt, out double total_error)
+            {
+                alpha = theta = dx = dy = df = dt = total_error = 0;
+                foreach (var match in matches)
+                {
+                    (double x, double y) = (match.Item1.Item1, match.Item1.Item2);
+                    (double w1, double h1) = image_point_to_camera(x, y);
+                    (double w2, double h2) = match.Item3.image_point_to_camera(match.Item2.Item1, match.Item2.Item2);
+                    double inside_tan = (x * scalar_alpha * Math.Cos(rotation_theta) - y * scalar_alpha * Math.Sin(rotation_theta) + displace_x) / focal_length;
+                    double one_x_2 = 1 + inside_tan * inside_tan;
+
+                    alpha += beta * (h1 - h2) * ((x * Math.Sin(rotation_theta) + y * Math.Cos(rotation_theta)) / focal_length) +
+                        (w1 - w2) * (((x * Math.Cos(rotation_theta) - y * Math.Sin(rotation_theta)) / focal_length) / one_x_2);
+                    theta += beta * (h1 - h2) * ((x * scalar_alpha * Math.Cos(rotation_theta) - y * scalar_alpha * Math.Sin(rotation_theta)) / focal_length) +
+                        (w1 - w2) * (((-x * scalar_alpha * Math.Sin(rotation_theta) - y * scalar_alpha * Math.Cos(rotation_theta)) / focal_length) / one_x_2);
+                    dx += (w1 - w2) * ((1 / focal_length) / one_x_2);
+                    dy += beta * (h1 - h2) * (1 / focal_length);
+                    df += beta * (h1 - h2) * (-(x * scalar_alpha * Math.Sin(rotation_theta) + y * scalar_alpha * Math.Cos(rotation_theta) + displace_y) / (focal_length * focal_length)) +
+                        (w1 - w2) * ((-(x * scalar_alpha * Math.Cos(rotation_theta) - y * scalar_alpha * Math.Sin(rotation_theta)) / (focal_length * focal_length)) / one_x_2);
+                    dt += (w1 - w2);
+                    total_error += beta * (h1 - h2) * (h1 - h2) + (w1 - w2) * (w1 - w2);
+                }
+            }
+            IImageD_Provider image_provider;
+            public double center_direction;
+            public double focal_length;
+            public double rotation_theta = 0, scalar_alpha = 1, displace_x = 0, displace_y = 0, perspective_x = 0, perspective_y = 0;
+            private double[,]get_matrix()
+            {
+                return new double[3, 3]
+                {
+                    {scalar_alpha*Math.Cos(rotation_theta),-scalar_alpha*Math.Sin(rotation_theta),displace_x },
+                    {scalar_alpha*Math.Sin(rotation_theta),scalar_alpha*Math.Cos(rotation_theta),displace_y },
+                    {perspective_x,perspective_y,1 }
+                };
+            }
+            private static double[,] inverse(double[,] a)
+            {
+                System.Diagnostics.Trace.Assert(a.GetLength(0) == 3 && a.GetLength(1) == 3);
+                double[,] ans = new double[3, 3]
+                {
+                    { a[1,1]*a[2,2]-a[1,2]*a[2,1], a[0,2]*a[2,1]-a[0,1]*a[2,2], a[0,1]*a[1,2]-a[0,2]*a[1,1] },
+                    { a[1,2]*a[2,0]-a[1,0]*a[2,2], a[0,0]*a[2,2]-a[0,2]*a[2,0], a[0,2]*a[1,0]-a[0,0]*a[1,2] },
+                    { a[1,0]*a[2,1]-a[1,1]*a[2,0], a[0,1]*a[2,0]-a[0,0]*a[2,1], a[0,0]*a[1,1]-a[0,1]*a[1,0] }
+                };
+                double det = 0;
+                for (int i = 0; i < 3; i++) det += a[0, i] * a[1, (i + 1) % 3] * a[2, (i + 2) % 3] - a[0, i] * a[1, (i + 2) % 3] * a[2, (i + 1) % 3];
+                for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) ans[i, j] /= det;
+                return ans;
+            }
+            private double[] recover_z(double[] a)
+            {
+                System.Diagnostics.Trace.Assert(a.Length == 2);
+                double[,] m = inverse(get_matrix());
+                // (m[2,0]*a[0]+m[2,1]*a[1])*z+m[2,2]*z==1
+                double z = 1.0 / (m[2, 0] * a[0] + m[2, 1] * a[1] + m[2, 2]);
+                return new double[3] { a[0] * z, a[1] * z, z };
+            }
+            private static double[] multiply(double[,] a, double[] b)
+            {
+                System.Diagnostics.Trace.Assert(a.GetLength(0) == 3 && a.GetLength(1) == 3 && b.Length == 3);
+                double[] ans = new double[3];
+                for (int i = 0; i < 3; i++)
+                {
+                    for (int j = 0; j < 3; j++)
+                    {
+                        ans[j] += a[i, j] * b[j];
+                    }
+                }
+                return ans;
+            }
+            public (double, double) image_point_to_camera(double x, double y)
+            {
+                x -= 0.5 * width; y -= 0.5 * height;
+                double[] a = new double[3] { x, y, 1 };
+                a = multiply(get_matrix(), a);
+                (x, y) = (a[0] / a[2], a[1] / a[2]);
+                double w = center_direction + Math.Atan(x / focal_length);
+                double h = y / Math.Sqrt(x * x + focal_length * focal_length);
+                w %= 2.0 * Math.PI;
+                if (w < 0) w += 2.0 * Math.PI;
+                return (w, h);
+            }
+            public (double, double) camera_to_image_point(double direction, double h, double cylinder_radius = 1)
+            {
+                double angle_diff = (direction - center_direction) % (2.0 * Math.PI);
+                if (angle_diff < 0) angle_diff += 2.0 * Math.PI;
+                if (0.5 * Math.PI <= angle_diff && angle_diff <= 1.5 * Math.PI) return (double.NaN, double.NaN);
+                MyImageD image = image_provider.GetImageD();
+                double x = Math.Tan(direction - center_direction) * focal_length;
+                double y = h * (Math.Sqrt(x * x + focal_length * focal_length) / cylinder_radius);
+                double[] a = recover_z(new[] { x, y });
+                a = multiply(inverse(get_matrix()), a);
+                //(x, y) = (x - displace_x, y - displace_y);
+                //(x, y) = ((x * Math.Cos(-rotation_theta) - y * Math.Sin(-rotation_theta)) / scalar_alpha, (x * Math.Sin(-rotation_theta) + y * Math.Cos(-rotation_theta)) / scalar_alpha);
+                (x, y) = (a[0], a[1]);
+                return (x + 0.5 * width, y + 0.5 * height);
+            }
+            public int height { get { return image_provider.GetImageD().height; } }
+            public int width { get { return image_provider.GetImageD().width; } }
+            public CylinderImage(IImageD_Provider image_provider, double center_direction, double focal_length)
+            {
+                this.image_provider = image_provider;
+                this.center_direction = center_direction;
+                this.focal_length = focal_length;
+            }
+            public bool sample_pixel(double direction, double cylinder_radius, double h, out double r, out double g, out double b)
+            {
+                // h = y*(r/sqrt(x^2+f^2))
+                // a = center_direction+atan(x/f)
+                // r = 1, f fixed, for each "h, a", find "x, y"\
+                MyImageD image = image_provider.GetImageD();
+                (double x, double y) = camera_to_image_point(direction, h, cylinder_radius);
+                return image.sample(x, y, out r, out g, out b);
+            }
+        }
+        class CylinderImage_Backup
+        {
+            //  [   αcosθ   -αsinθ  x'  ][x]   [xαcosθ-yαsinθ+x']
+            //  [   αsinθ   αcosθ   y'  ][y] = [xαsinθ+yαcosθ+y']
             //  [   0       0       1   ][1]   [       1        ]
             //  h=(xαsinθ+yαcosθ+y')/f
             //  w=t+atan((xαcosθ-yαsinθ+x')/f)
@@ -29,9 +180,20 @@ namespace AutoStitch.Pages
             //  dw/df:  (-(xαcosθ-yαsinθ+x')/f^2)/(1+((xαcosθ-yαsinθ+x')/f)^2)
             //  dh/dt:  0
             //  dw/dt:  1
-            public void get_derivatives(double beta, List<Tuple<Tuple<double, double>, Tuple<double, double>,CylinderImage>>matches,out double alpha,out double theta,out double dx,out double dy,out double df,out double dt)
+            /// <summary>
+            /// 
+            /// </summary>
+            /// <param name="beta"></param>
+            /// <param name="matches">matched points of image positions</param>
+            /// <param name="alpha"></param>
+            /// <param name="theta"></param>
+            /// <param name="dx"></param>
+            /// <param name="dy"></param>
+            /// <param name="df"></param>
+            /// <param name="dt"></param>
+            public void get_derivatives(double beta, List<Tuple<Tuple<double, double>, Tuple<double, double>,CylinderImage>>matches,out double alpha,out double theta,out double dx,out double dy,out double df,out double dt,out double total_error)
             {
-                alpha = theta = dx = dy = df = dt = 0;
+                alpha = theta = dx = dy = df = dt =total_error= 0;
                 foreach (var match in matches)
                 {
                     (double x, double y) = (match.Item1.Item1, match.Item1.Item2);
@@ -49,6 +211,7 @@ namespace AutoStitch.Pages
                     df += beta * (h1 - h2) * (-(x * scalar_alpha * Math.Sin(rotation_theta) + y * scalar_alpha * Math.Cos(rotation_theta) + displace_y) / (focal_length * focal_length)) +
                         (w1 - w2) * ((-(x * scalar_alpha * Math.Cos(rotation_theta) - y * scalar_alpha * Math.Sin(rotation_theta)) / (focal_length * focal_length)) / one_x_2);
                     dt += (w1 - w2);
+                    total_error += beta * (h1 - h2) * (h1 - h2) + (w1 - w2) * (w1 - w2);
                 }
             }
             IImageD_Provider image_provider;
@@ -58,14 +221,28 @@ namespace AutoStitch.Pages
             public (double, double) image_point_to_camera(double x, double y)
             {
                 x -= 0.5 * width;y -= 0.5 * height;
-                return (
-                    center_direction + Math.Atan((x * scalar_alpha * Math.Cos(rotation_theta) - y * scalar_alpha * Math.Sin(rotation_theta) + displace_x) / focal_length),
-                    (x * scalar_alpha * Math.Sin(rotation_theta) + y * scalar_alpha * Math.Cos(rotation_theta) + displace_y) / focal_length);
-
+                (x, y) = ((x * scalar_alpha * Math.Cos(rotation_theta) - y * scalar_alpha * Math.Sin(rotation_theta) + displace_x), (x * scalar_alpha * Math.Sin(rotation_theta) + y * scalar_alpha * Math.Cos(rotation_theta) + displace_y));
+                double w = center_direction + Math.Atan( x/ focal_length);
+                double h = y / Math.Sqrt(x * x + focal_length * focal_length);
+                w %= 2.0 * Math.PI;
+                if (w < 0) w += 2.0 * Math.PI;
+                return (w,h);
             }
-            public double height { get { return image_provider.GetImageD().height; } }
-            public double width { get { return image_provider.GetImageD().width; } }
-            public CylinderImage(IImageD_Provider image_provider,double center_direction,double focal_length)
+            public (double, double) camera_to_image_point(double direction, double h, double cylinder_radius=1)
+            {
+                double angle_diff = (direction - center_direction) % (2.0 * Math.PI);
+                if (angle_diff < 0) angle_diff += 2.0 * Math.PI;
+                if (0.5 * Math.PI <= angle_diff && angle_diff <= 1.5 * Math.PI) return (double.NaN, double.NaN);
+                MyImageD image = image_provider.GetImageD();
+                double x = Math.Tan(direction - center_direction) * focal_length;
+                double y = h * (Math.Sqrt(x * x + focal_length * focal_length) / cylinder_radius);
+                (x, y) = (x - displace_x, y - displace_y);
+                (x, y) = ((x * Math.Cos(-rotation_theta) - y * Math.Sin(-rotation_theta)) / scalar_alpha, (x * Math.Sin(-rotation_theta) + y * Math.Cos(-rotation_theta)) / scalar_alpha);
+                return (x + 0.5 * width, y + 0.5 * height);
+            }
+            public int height { get { return image_provider.GetImageD().height; } }
+            public int width { get { return image_provider.GetImageD().width; } }
+            public CylinderImage_Backup(IImageD_Provider image_provider,double center_direction,double focal_length)
             {
                 this.image_provider = image_provider;
                 this.center_direction = center_direction;
@@ -75,15 +252,9 @@ namespace AutoStitch.Pages
             {
                 // h = y*(r/sqrt(x^2+f^2))
                 // a = center_direction+atan(x/f)
-                // r = 1, f fixed, for each "h, a", find "x, y"
-                double angle_diff = (direction - center_direction) % (2.0 * Math.PI);
-                if (angle_diff < 0) angle_diff += 2.0 * Math.PI;
-                if (0.5 * Math.PI <= angle_diff && angle_diff <= 1.5 * Math.PI) { r = g = b = 0; return false; }
+                // r = 1, f fixed, for each "h, a", find "x, y"\
                 MyImageD image = image_provider.GetImageD();
-                double x = Math.Tan(direction - center_direction) * focal_length;
-                double y = h * (Math.Sqrt(x * x + focal_length * focal_length) / cylinder_radius);
-                x += 0.5 * width;y += 0.5 * height;
-                (x, y) = ((x * Math.Cos(-rotation_theta) - y * Math.Sin(-rotation_theta)) / scalar_alpha, (x * Math.Sin(-rotation_theta) + y * Math.Cos(-rotation_theta)) / scalar_alpha);
+                (double x,double y) = camera_to_image_point(direction, h, cylinder_radius);
                 return image.sample(x, y, out r, out g, out b);
             }
         }

@@ -23,29 +23,29 @@ namespace AutoStitch.Pages
                 MyImageD image = new MyMatrix(new double[height, width]).ToGrayImageD();
                 double min_h = cylinder_images.Min(i => (i.displace_y - 0.5 * i.height) / i.focal_length),
                     max_h = cylinder_images.Max(i => (i.displace_y + 0.5 * i.height) / i.focal_length);
-                for (int i = 0; i < height; i++)
-                {
-                    for (int j = 0; j < width; j++)
-                    {
-                        double r = 0, g = 0, b = 0;
-                        int cnt = 0;
-                        foreach (var img in cylinder_images)
-                        {
-                            if (img.sample_pixel(((double)j / width) * 2.0 * Math.PI, 1, (i * max_h + (height - 1 - i) * min_h) / (height - 1), out double _r, out double _g, out double _b))
-                            {
-                                r += _r; g += _g; b += _b;
-                                cnt++;
-                            }
-                        }
-                        if (cnt > 0) { r /= cnt; g /= cnt; b /= cnt; }
-                        int k = i * image.stride + j * 4;
-                        // bgra
-                        image.data[k + 0] = b;
-                        image.data[k + 1] = g;
-                        image.data[k + 2] = r;
-                        image.data[k + 3] = 1;
-                    }
-                }
+                System.Threading.Tasks.Parallel.For(0, height, i =>
+                  {
+                      for (int j = 0; j < width; j++)
+                      {
+                          double r = 0, g = 0, b = 0;
+                          int cnt = 0;
+                          foreach (var img in cylinder_images)
+                          {
+                              if (img.sample_pixel(((double)j / width) * 2.0 * Math.PI, 1, (i * max_h + (height - 1 - i) * min_h) / (height - 1), out double _r, out double _g, out double _b))
+                              {
+                                  r += _r; g += _g; b += _b;
+                                  cnt++;
+                              }
+                          }
+                          if (cnt > 0) { r /= cnt; g /= cnt; b /= cnt; }
+                          int k = i * image.stride + j * 4;
+                          // bgra
+                          image.data[k + 0] = b;
+                          image.data[k + 1] = g;
+                          image.data[k + 2] = r;
+                          image.data[k + 3] = 1;
+                      }
+                  });
                 return image;
             }
             public override void Reset()

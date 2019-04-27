@@ -92,6 +92,7 @@
     <Compile Include="PointsProviders\AdaptiveNonmaximalSuppression.cs" />
     <Compile Include="PointsProviders\LocalMaximum.cs" />
     <Compile Include="PointsProviders\MSOP_DescriptorVector.cs" />
+    <Compile Include="PointsProviders\MSOP_DescriptorVector.Descriptor.cs" />
     <Compile Include="PointsProviders\MultiScaleHarrisCornerDetector.cs" />
     <Compile Include="PointsProviders\PointsCache.cs" />
     <Compile Include="PointsProviders\SubpixelRefinement.cs" />
@@ -137,6 +138,7 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <None Include="ClosestPoints.cl" />
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>

@@ -53,6 +53,12 @@ namespace AutoStitch.Pages
             await Task.Run(() =>
             {
                 global_viewer.InitializeOnPlane();
+                while(true)
+                {
+                    for(int i=0;i<100;i++)global_viewer.Refine();
+                    global_viewer.ResetSelf();
+                    global_viewer.GetImageD();
+                }
             });
         }
         public CylinderPage()

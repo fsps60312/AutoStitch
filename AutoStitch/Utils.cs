@@ -76,5 +76,19 @@ namespace AutoStitch
             List<Tuple<double, double>> inliners = points.Where(p => accepts(p, candidate)).ToList();
             return new Tuple<double, double>(inliners.Sum(p => p.Item1) / inliners.Count, inliners.Sum(p => p.Item2) / inliners.Count);
         }
+        public static List<int> VoteInliners(List<Tuple<double, double>> points, double tolerance, int tries = 10)
+        {
+            var accepts = new Func<Tuple<double, double>, Tuple<double, double>, bool>((p, q) =>
+            {
+                double dx = p.Item1 - q.Item1;
+                double dy = p.Item2 - q.Item2;
+                double d = dx * dx + dy * dy;
+                return d <= tolerance * tolerance;
+            });
+            var selected_point = Vote(points, tolerance, out _, tries);
+            List<int> ans = new List<int>();
+            for (int i = 0; i < points.Count; i++) if (accepts(points[i], selected_point)) ans.Add(i);
+            return ans;
+        }
     }
 }
