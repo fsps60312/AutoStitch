@@ -140,18 +140,22 @@ namespace AutoStitch.Pages
             }
             int refine_count = 0;
             double step_size = double.NaN;
-            public void Refine()
+            public void Refine(bool verbose=true)
             {
-                LogPanel.Log($"refining #{++refine_count}...");
+                ++refine_count;
+                if (verbose) LogPanel.Log($"refining #{refine_count}...");
                 double total_error = 0;
                 double d_sum = 0;
                 List<(double, double, double, double, double, double)> derivatives = new List<(double, double, double, double, double, double)>();
                 int num_error_entries = 0;
+                System.Text.StringBuilder sb_inliners = new System.Text.StringBuilder();
+                double average_focal_length = cylinder_images.Sum(i => i.focal_length) / cylinder_images.Count;
                 for(int i=0;i<n;i++)
                 {
                     List<Tuple<Tuple<double, double>, Tuple<double, double>, CylinderImage>> matches = new List<Tuple<Tuple<double, double>, Tuple<double, double>, CylinderImage>>();
                     for (int j=0;j<n;j++)
                     {
+                        if(j>0)sb_inliners.Append('\t');
                         if (i == j) continue;
                         List<int> match_list_raw = points_match_list(i, j);
                         List<(int, int)> match_list = new List<(int, int)>();
@@ -161,12 +165,12 @@ namespace AutoStitch.Pages
                               (int p, int q) = _;
                               (double x1, double y1) = cylinder_images[i].image_point_to_camera(points[i][p].x, points[i][p].y);
                               (double x2, double y2) = cylinder_images[j].image_point_to_camera(points[j][q].x, points[j][q].y);
-                              if (x1 < 0.5 * Math.PI && 1.5 * Math.PI < x2) x1 += 2.0 * Math.PI;
-                              else if (x2 < 0.5 * Math.PI && 1.5 * Math.PI < x1) x2 += 2.0 * Math.PI;
+                              if (x2 - x1 > Math.PI) x1 += 2.0 * Math.PI;
+                              else if (x1 - x2 > Math.PI) x2 += 2.0 * Math.PI;
                               //LogPanel.Log($"{x1},{y1}\t{x2},{y2}");
                               return Tuple.Create(x1 - x2, (y1 - y2) * Math.PI);
-                          }).ToList(), 2 * Math.PI / 100);
-                        //LogPanel.Log($"inliners.Count = {inliners.Count}");
+                          }).ToList(), 10 / average_focal_length);
+                        sb_inliners.Append(inliners.Count);
                         if (inliners.Count >= min_num_inliners)
                         {
                             foreach (var k in inliners)
@@ -187,18 +191,26 @@ namespace AutoStitch.Pages
                             }
                         }
                     }
+                    sb_inliners.AppendLine();
                     num_error_entries += matches.Count;
                     cylinder_images[i].get_derivatives(Math.PI, matches, out double alpha, out double theta, out double dx, out double dy, out double df, out double dt, out double error);
                     total_error += error;
                     d_sum += alpha * alpha + theta * theta + dx * dx + dy * dy + df * df + dt * dt;
                     derivatives.Add((alpha, theta, dx, dy, df, dt));
                 }
-                LogPanel.Log($"average error: {total_error / num_error_entries}");
-                if (double.IsNaN(step_size)) step_size = total_error / d_sum * 0.01;
-                else step_size *= 0.99;
-                for(int i=0;i<n;i++)
+                if (verbose)
+                {
+                    LogPanel.Log("number of inliners matrix:");
+                    LogPanel.Log(sb_inliners.ToString());
+                    LogPanel.Log($"average error: {total_error / num_error_entries}");
+                }
+                if (double.IsNaN(step_size)) step_size = total_error / d_sum * 0.1;
+                else step_size = total_error / d_sum * 0.1;
+                if (verbose) LogPanel.Log($"step_size: {step_size}");
+                for (int i=0;i<n;i++)
                 {
                     (double alpha, double theta, double dx, double dy, double df, double dt) = derivatives[i];
+                    if (verbose) LogPanel.Log($"image[{i}], alpha = {alpha}, theta = {theta}, dx = {dx}, dy = {dy}, df = {df}, dt = {dt}");
                     cylinder_images[i].scalar_alpha -= step_size * alpha;
                     cylinder_images[i].rotation_theta -= step_size * theta;
                     cylinder_images[i].displace_x -= step_size * dx;
@@ -206,10 +218,12 @@ namespace AutoStitch.Pages
                     cylinder_images[i].focal_length -= step_size * df;
                     cylinder_images[i].center_direction -= step_size * dt;
                 }
-                LogPanel.Log($"step_size: {step_size}");
-                //LogPanel.Log("done.");
-                //this.ResetSelf();
-                //this.GetImageD();
+                if (verbose)
+                {
+                    LogPanel.Log("done.");
+                    this.ResetSelf();
+                    this.GetImageD();
+                }
                 //System.Threading.Thread.Sleep(1000000000);
             }
             public void InitializeOnPlane()

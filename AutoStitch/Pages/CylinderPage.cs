@@ -55,9 +55,8 @@ namespace AutoStitch.Pages
                 global_viewer.InitializeOnPlane();
                 while(true)
                 {
-                    for(int i=0;i<100;i++)global_viewer.Refine();
-                    global_viewer.ResetSelf();
-                    global_viewer.GetImageD();
+                    global_viewer.Refine(true);
+                    for (int i=0;i<99;i++)global_viewer.Refine(false);
                 }
             });
         }

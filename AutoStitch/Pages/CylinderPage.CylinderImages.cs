@@ -31,7 +31,7 @@ namespace AutoStitch.Pages
                           int cnt = 0;
                           foreach (var img in cylinder_images)
                           {
-                              if (img.sample_pixel(((double)j / width) * 2.0 * Math.PI, 1, (i * max_h + (height - 1 - i) * min_h) / (height - 1), out double _r, out double _g, out double _b))
+                              if (img.sample_pixel(((double)j / width) * 2.0 * Math.PI, (i * max_h + (height - 1 - i) * min_h) / (height - 1), out double _r, out double _g, out double _b))
                               {
                                   r += _r; g += _g; b += _b;
                                   cnt++;
