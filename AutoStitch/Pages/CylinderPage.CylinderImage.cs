@@ -34,6 +34,10 @@ namespace AutoStitch.Pages
             //  dw/df:  (-((xαcosθ-yαsinθ+x')/(xp+qy+1))/f^2)/one_x_2
             //  dh/dt:  0
             //  dw/dt:  1
+            //  dh/dp:  (-((xαsinθ+yαcosθ+y')/sqrt(f*f+x*x))/(xp+qy+1)^2)*x
+            //  dw/dp:  x*(-((xαcosθ-yαsinθ+x')/f)/(xp+qy+1)^2)/one_x_2
+            //  dh/dq:  (-((xαsinθ+yαcosθ+y')/sqrt(f*f+x*x))/(xp+qy+1)^2)*y
+            //  dw/dq:  y*(-((xαcosθ-yαsinθ+x')/f)/(xp+qy+1)^2)/one_x_2
             /// <summary>
             /// 
             /// </summary>
@@ -45,9 +49,9 @@ namespace AutoStitch.Pages
             /// <param name="dy"></param>
             /// <param name="df"></param>
             /// <param name="dt"></param>
-            public void get_derivatives(double beta, List<Tuple<Tuple<double, double>, Tuple<double, double>, CylinderImage>> matches, out double alpha, out double theta, out double dx, out double dy, out double df, out double dt, out double total_error)
+            public void get_derivatives(double beta, List<Tuple<Tuple<double, double>, Tuple<double, double>, CylinderImage>> matches, out double alpha, out double theta, out double dx, out double dy, out double df, out double dt, out double dp, out double dq, out double total_error)
             {
-                alpha = theta = dx = dy = df = dt = total_error = 0;
+                alpha = theta = dx = dy = df = dt = dp = dq = total_error = 0;
                 foreach (var match in matches)
                 {
                     (double x, double y) = (match.Item1.Item1 - 0.5 * width, match.Item1.Item2 - 0.5 * height);
@@ -55,26 +59,43 @@ namespace AutoStitch.Pages
                     (double w2, double h2) = match.Item3.image_point_to_camera(match.Item2.Item1, match.Item2.Item2);
                     if (w2 - w1 > Math.PI) w1 += 2.0 * Math.PI;
                     else if (w1 - w2 > Math.PI) w2 += 2.0 * Math.PI;
-                    double down_q = (x * perspective_x + y * perspective_y + 1) * Math.Sqrt(focal_length * focal_length + x * x);
-                    double down_f = (x * perspective_x + y * perspective_y + 1) * focal_length;
-                    double inside_tan = (x * scalar_alpha * Math.Cos(rotation_theta) - y * scalar_alpha * Math.Sin(rotation_theta) + displace_x) / down_f;
+                    double pq_term = x * perspective_x + y * perspective_y + 1;
+                    double fx_term = Math.Sqrt(focal_length * focal_length + x * x);
+                    double h_term = x * Math.Sin(rotation_theta) + y * Math.Cos(rotation_theta);
+                    double dh_term = x * Math.Cos(rotation_theta) - y * Math.Sin(rotation_theta);
+                    double w_term = x * Math.Cos(rotation_theta) - y * Math.Sin(rotation_theta);
+                    double dw_term = -x * Math.Sin(rotation_theta) - y * Math.Cos(rotation_theta);
+                    //double down_q = pq_term * fx_term;
+                    //double down_f = pq_term * focal_length;
+                    double inside_tan = (scalar_alpha * dw_term + displace_x) / pq_term / focal_length;
                     double one_x_2 = 1 + inside_tan * inside_tan;
 
-                    alpha += beta * (h1 - h2) * ((x * Math.Sin(rotation_theta) + y * Math.Cos(rotation_theta)) / down_q) +
-                        (w1 - w2) * (((x * Math.Cos(rotation_theta) - y * Math.Sin(rotation_theta)) / down_f) / one_x_2);
-                    theta += beta * (h1 - h2) * ((x * scalar_alpha * Math.Cos(rotation_theta) - y * scalar_alpha * Math.Sin(rotation_theta)) / down_q) +
-                        (w1 - w2) * (((-x * scalar_alpha * Math.Sin(rotation_theta) - y * scalar_alpha * Math.Cos(rotation_theta)) / down_f) / one_x_2);
-                    dx += (w1 - w2) * ((1 / down_f) / one_x_2);
-                    dy += beta * (h1 - h2) * (1 / down_q);
+                    alpha += beta * (h1 - h2) * (h_term / pq_term / fx_term) +
+                        (w1 - w2) * ((w_term / pq_term / focal_length) / one_x_2);
+                    theta += beta * (h1 - h2) * ((scalar_alpha * dh_term) / pq_term / fx_term) +
+                        (w1 - w2) * (((scalar_alpha * dw_term) / pq_term / focal_length) / one_x_2);
+                    dx += (w1 - w2) * ((1 / pq_term / focal_length) / one_x_2);
+                    dy += beta * (h1 - h2) * (1 / pq_term / fx_term);
                     df += beta * (h1 - h2) * (
-                        ((x * scalar_alpha * Math.Sin(rotation_theta) + y * scalar_alpha * Math.Cos(rotation_theta) + displace_y) / (x * perspective_x + y * perspective_y + 1)) *
+                        ((scalar_alpha * h_term + displace_y) / pq_term) *
                         (-0.5 * Math.Pow(focal_length * focal_length + x * x, -1.5)) *
                         (2 * focal_length)) +
-                        (w1 - w2) * ((-(x * scalar_alpha * Math.Cos(rotation_theta) - y * scalar_alpha * Math.Sin(rotation_theta) + displace_x) / (down_f * focal_length)) / one_x_2);
+                        (w1 - w2) * ((-(scalar_alpha * w_term + displace_x) / (pq_term * focal_length * focal_length)) / one_x_2);
                     dt += (w1 - w2);
+                    //double dh_perspective = -((scalar_alpha * h_term + displace_y) / fx_term) / (pq_term * pq_term);
+                    //double dw_perspective = (-(scalar_alpha * w_term + displace_x) / (focal_length * pq_term * pq_term)) / one_x_2;
+                    //dp += beta * (h1 - h2) * (dh_perspective * x) +
+                    //    (w1 - w2) * (dw_perspective * x);
+                    //dq += beta * (h1 - h2) * (dh_perspective * y) +
+                    //    (w1 - w2) * (dw_perspective * y);
                     total_error += beta * (h1 - h2) * (h1 - h2) + (w1 - w2) * (w1 - w2);
                 }
-                alpha *= 2; theta *= 2; dx *= 2; dy *= 2; df *= 2; dt *= 2;
+                alpha *= 2; theta *= 2; dx *= 2; dy *= 2; df *= 2; dt *= 2; dp *= 2; dq *= 2;
+                // regularization
+                const double regularization = 1e-5;
+                dp -= regularization * 2 * perspective_x;
+                dq -= regularization * 2 * perspective_y;
+                total_error += regularization + (perspective_x * perspective_x + perspective_y * perspective_y);
             }
             IImageD_Provider image_provider;
             public double center_direction;
@@ -126,6 +147,7 @@ namespace AutoStitch.Pages
             }
             public (double, double) image_point_to_camera(double x, double y)
             {
+                double x_backup = x, y_backup = y;
                 x -= 0.5 * width; y -= 0.5 * height;
                 double[] a = new double[3] { x, y, 1 };
                 a = multiply(get_matrix(), a);
@@ -134,9 +156,14 @@ namespace AutoStitch.Pages
                 double h = y / Math.Sqrt(x * x + focal_length * focal_length);
                 w %= 2.0 * Math.PI;
                 if (w < 0) w += 2.0 * Math.PI;
+                {
+                    (x, y) = camera_to_image_point(w, h);
+                    double error = Math.Sqrt(Math.Pow(x - x_backup, 2) + Math.Pow(y - y_backup, 2));
+                    System.Diagnostics.Trace.Assert(error < 1e-8);
+                    //if (error > 1e-9) LogPanel.Log($"error = {error}, x: {x_backup} → {x}, y: {y_backup} → {y}");
+                }
                 return (w, h);
             }
-            static int ttt = 0;
             public (double, double) camera_to_image_point(double direction, double h)
             {
                 double angle_diff = (direction - center_direction) % (2.0 * Math.PI);
@@ -147,7 +174,7 @@ namespace AutoStitch.Pages
                 double y = h * (Math.Sqrt(x * x + focal_length * focal_length));
                 double[] a = recover_z(new[] { x, y });
                 a = multiply(inverse(get_matrix()), a);
-                System.Diagnostics.Trace.Assert(Math.Abs(a[2] - 1) < 1e-9);
+                System.Diagnostics.Trace.Assert(Math.Abs(a[2] - 1) < 1e-8);
                 //(x, y) = (x - displace_x, y - displace_y);
                 //(x, y) = ((x * Math.Cos(-rotation_theta) - y * Math.Sin(-rotation_theta)) / scalar_alpha, (x * Math.Sin(-rotation_theta) + y * Math.Cos(-rotation_theta)) / scalar_alpha);
                 (x, y) = (a[0], a[1]);

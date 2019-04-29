@@ -14,7 +14,7 @@ namespace AutoStitch.Pages
             public CylinderImages(List<IImageD_Provider> image_providers, int width, int height)
             {
                 this.image_providers = image_providers;
-                this.cylinder_images = image_providers.Select(p => new CylinderImage(p, Utils.RandDouble() * 2.0 * Math.PI, 100)).ToList();
+                this.cylinder_images = image_providers.Select(p => new CylinderImage(p, Utils.RandDouble() * 2.0 * Math.PI, 500)).ToList();
                 this.width = width;
                 this.height = height;
             }

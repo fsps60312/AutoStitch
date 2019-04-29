@@ -146,7 +146,7 @@ namespace AutoStitch.Pages
                 if (verbose) LogPanel.Log($"refining #{refine_count}...");
                 double total_error = 0;
                 double d_sum = 0;
-                List<(double, double, double, double, double, double)> derivatives = new List<(double, double, double, double, double, double)>();
+                List<(double, double, double, double, double, double,double,double)> derivatives = new List<(double, double, double, double, double, double,double,double)>();
                 int num_error_entries = 0;
                 System.Text.StringBuilder sb_inliners = new System.Text.StringBuilder();
                 double average_focal_length = cylinder_images.Sum(i => i.focal_length) / cylinder_images.Count;
@@ -193,10 +193,10 @@ namespace AutoStitch.Pages
                     }
                     sb_inliners.AppendLine();
                     num_error_entries += matches.Count;
-                    cylinder_images[i].get_derivatives(Math.PI, matches, out double alpha, out double theta, out double dx, out double dy, out double df, out double dt, out double error);
+                    cylinder_images[i].get_derivatives(Math.PI, matches, out double alpha, out double theta, out double dx, out double dy, out double df, out double dt,out double dp,out double dq, out double error);
                     total_error += error;
-                    d_sum += alpha * alpha + theta * theta + dx * dx + dy * dy + df * df + dt * dt;
-                    derivatives.Add((alpha, theta, dx, dy, df, dt));
+                    d_sum += alpha * alpha + theta * theta + dx * dx + dy * dy + df * df + dt * dt + dp * dp + dq * dq;
+                    derivatives.Add((alpha, theta, dx, dy, df, dt,dp,dq));
                 }
                 if (verbose)
                 {
@@ -204,19 +204,21 @@ namespace AutoStitch.Pages
                     LogPanel.Log(sb_inliners.ToString());
                     LogPanel.Log($"average error: {total_error / num_error_entries}");
                 }
-                if (double.IsNaN(step_size)) step_size = total_error / d_sum * 0.1;
-                else step_size = total_error / d_sum * 0.1;
+                if (double.IsNaN(step_size)) step_size = total_error / d_sum * 0.5;
+                else step_size = total_error / d_sum * 0.5;
                 if (verbose) LogPanel.Log($"step_size: {step_size}");
                 for (int i=0;i<n;i++)
                 {
-                    (double alpha, double theta, double dx, double dy, double df, double dt) = derivatives[i];
-                    if (verbose) LogPanel.Log($"image[{i}], alpha = {alpha}, theta = {theta}, dx = {dx}, dy = {dy}, df = {df}, dt = {dt}");
+                    (double alpha, double theta, double dx, double dy, double df, double dt,double dp,double dq) = derivatives[i];
+                    if (verbose) LogPanel.Log($"image[{i}], alpha = {alpha}, theta = {theta}, dx = {dx}, dy = {dy}, df = {df}, dt = {dt}, dp = {dp}, dq = {dq}");
                     cylinder_images[i].scalar_alpha -= step_size * alpha;
                     cylinder_images[i].rotation_theta -= step_size * theta;
                     cylinder_images[i].displace_x -= step_size * dx;
                     cylinder_images[i].displace_y -= step_size * dy;
                     cylinder_images[i].focal_length -= step_size * df;
                     cylinder_images[i].center_direction -= step_size * dt;
+                    cylinder_images[i].perspective_x -= step_size * dp;
+                    cylinder_images[i].perspective_y -= step_size * dq;
                 }
                 if (verbose)
                 {
