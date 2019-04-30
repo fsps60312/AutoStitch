@@ -90,5 +90,11 @@ namespace AutoStitch
             for (int i = 0; i < points.Count; i++) if (accepts(points[i], selected_point)) ans.Add(i);
             return ans;
         }
+        public static double Mod2PI(double v)
+        {
+            v %= 2.0 * Math.PI;
+            if (v < 0) v += 2.0 * Math.PI;
+            return v;
+        }
     }
 }

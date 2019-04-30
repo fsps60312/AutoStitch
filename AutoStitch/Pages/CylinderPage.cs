@@ -48,16 +48,33 @@ namespace AutoStitch.Pages
         async void StartSimulation()
         {
             int kase_self = System.Threading.Interlocked.Increment(ref kase);
-            var global_viewer = new CorrectiveCylinderImages(source_image_panel.GetImages().Select(i => new ImageD_Providers.ImageD_Cache(i.ToImageD()) as IImageD_Provider).ToList(), 5000, 600);
-            image_container.Content = new ImageViewer(global_viewer, false);
+            var global_viewer = new CorrectiveCylinderImages(source_image_panel.GetImages().Select(i => new ImageD_Providers.ImageD_Cache(i.ToImageD()) as IImageD_Provider).ToList(), 5000 / 2, 600 / 2);
+            image_container.Content = new ScrollViewer
+            {
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                Content = new ImageViewer(global_viewer, false)
+            };
             await Task.Run(() =>
             {
                 global_viewer.InitializeOnPlane();
-                while(true)
+                for(DateTime time=DateTime.MinValue; ;)
                 {
-                    global_viewer.Refine(true);
-                    for (int i=0;i<99;i++)global_viewer.Refine(false);
+                    bool verbose = false;
+                    if ((DateTime.Now - time).TotalSeconds > 10) verbose = true;
+                    global_viewer.Refine(verbose);
+                    if(verbose) time = DateTime.Now;
                 }
+                //int run_cnt = 1;
+                //for(int counter=0; ;counter++)
+                //{
+                //    global_viewer.Refine(true);
+                //    DateTime time = DateTime.Now;
+                //    for (int i = 0; i < run_cnt - 1; i++) global_viewer.Refine(false);
+                //    LogPanel.Log($"time eclapsed: {(DateTime.Now - time).TotalSeconds} s");
+                //    if (counter >= 5) run_cnt += Math.Max(1, run_cnt / 2);
+                    
+                //}
             });
         }
         public CylinderPage()

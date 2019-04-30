@@ -185,10 +185,11 @@ namespace AutoStitch
         }
         public bool sample(double x, double y, out double r, out double g, out double b)
         { // bgra
+            r = g = b = 0;
+            if (double.IsNaN(x) || double.IsNaN(y)) return false;
             int xi = (int)Math.Floor(x), yi = (int)Math.Floor(y);
             double dx = x - xi, dy = y - yi;
             //System.Diagnostics.Trace.Assert(xi <= x && x <= xi + 1 && yi <= y && y <= yi + 1);
-            r = g = b = 0;
             return
                 add_color(xi, yi, ref r, ref g, ref b, (1 - dx) * (1 - dy)) &
                 add_color(xi + 1, yi, ref r, ref g, ref b, dx * (1 - dy)) &
