@@ -14,7 +14,24 @@ namespace AutoStitch.Pages
             const int min_num_inliners = 10;
             public CorrectiveCylinderImages(List<IImageD_Provider> image_providers, int width, int height):base(image_providers,width,height)
             {
-                points_providers= this.image_providers.Select(i => new PointsProviders.MSOP_DescriptorVector(new PointsProviders.HarrisCornerDetector(i), new MatrixProviders.GrayScale(i)) as IPointsProvider).ToList();
+                var points_provider_gen = new Func<IImageD_Provider, IPointsProvider<PointsProviders.MSOP_DescriptorVector.Descriptor>>(
+                         i => new PointsProviders.MSOP_DescriptorVector(new PointsProviders.HarrisCornerDetector(i), new MatrixProviders.GrayScale(i)));
+                points_providers = this.image_providers.Select(img =>
+                    new PointsProviders.AdaptiveNonmaximalSuppression(
+                    new PointsProviders.MultiScaleFeaturePoints<PointsProviders.MSOP_DescriptorVector.Descriptor>(
+                     img, points_provider_gen, 7, 0.5, 1), 2000) as IPointsProvider).ToList();
+                {
+                    var provider = image_providers[0];
+                    double scale = 1;
+                    for (int i = 0; i < 7; i++, scale *= 0.5)
+                    {
+                        MyImageD img = provider.GetImageD();
+                        LogPanel.Log($"scale={scale}, width={img.width}, height={img.height}, stride={img.stride}, avg={img.data.Sum() / img.data.Length}");
+                        LogPanel.Log(img);
+                        provider = new ImageD_Providers.GaussianBlur(provider, 1);
+                        provider = new ImageD_Providers.Scale(provider, 0.5);
+                    }
+                }
             }
             List<List<ImagePoint<PointsProviders.MSOP_DescriptorVector.Descriptor>>> points;
             List<int>[,] points_match_list_cache = null;
@@ -140,11 +157,10 @@ namespace AutoStitch.Pages
                 }
             }
             int refine_count = 0;
-            public bool Refine(bool allow_perspective,bool allow_skew, bool verbose)
+            public bool Refine(bool allow_perspective, bool allow_skew, bool verbose)
             {
                 ++refine_count;
                 if (verbose) LogPanel.Log($"refining #{refine_count}...");
-                int num_error_entries = 0;
                 System.Text.StringBuilder sb_inliners = new System.Text.StringBuilder();
                 double average_focal_length = cylinder_images.Sum(i => i.focal_length) / cylinder_images.Count;
                 List<List<Tuple<Tuple<double, double>, Tuple<double, double>, CylinderImage>>> all_matches = new List<List<Tuple<Tuple<double, double>, Tuple<double, double>, CylinderImage>>>();
@@ -190,9 +206,10 @@ namespace AutoStitch.Pages
                         }
                     }
                     sb_inliners.AppendLine();
-                    num_error_entries += matches.Count;
                     all_matches.Add(matches);
                 }
+                int num_error_entries = all_matches.Sum(m => m.Count);
+                var average_pixel_error = new Func<double, double>(error => Math.Sqrt(error / num_error_entries) * average_focal_length);
                 List<(CylinderImage.Transform, double)> info = new List<(CylinderImage.Transform, double)>();
                 for (int i = 0; i < n; i++)
                 {
@@ -208,7 +225,7 @@ namespace AutoStitch.Pages
                 {
                     System.Diagnostics.Trace.WriteLine("number of inliners matrix:");
                     System.Diagnostics.Trace.WriteLine(sb_inliners.ToString());
-                    LogPanel.Log($"average error: {total_error / num_error_entries * average_focal_length}");
+                    LogPanel.Log($"average error: { average_pixel_error(total_error)}");
                 }
                 //if (double.IsNaN(step_size)) step_size = total_error / d_sum * 0.1;
                 //else step_size = total_error / d_sum * 0.1;
@@ -225,11 +242,11 @@ namespace AutoStitch.Pages
                 double multiplier = 1e-9;
                 double current_error = apply_change_all(multiplier);
                 for (double nxt_error; (nxt_error = apply_change_all(multiplier * 2)) < current_error; current_error = nxt_error, multiplier *= 2) ;
-                if(multiplier==1e-9)
+                if (multiplier == 1e-9)
                 {
-                    double pixel_error=apply_change_all(0) / num_error_entries * average_focal_length;
+                    double pixel_error = average_pixel_error(apply_change_all(0));
                     LogPanel.Log($"refine #{refine_count}: cannot improve, pixel error = {pixel_error}");
-                    for(int i=0;i<n;i++)
+                    for (int i = 0; i < n; i++)
                     {
                         LogPanel.Log($"derivatives of image[{i}]:");
                         LogPanel.Log(cylinder_images[i].get_derivatives(1, all_matches[i]).Item1.ToString());
@@ -237,10 +254,10 @@ namespace AutoStitch.Pages
                     return false;
                 }
                 if (verbose) LogPanel.Log($"multiplier = {multiplier}");
-                double final_error=apply_change_all(multiplier);
+                double final_error = apply_change_all(multiplier);
                 if (verbose)
                 {
-                    LogPanel.Log($"done. final average error = {final_error / num_error_entries * average_focal_length}");
+                    LogPanel.Log($"done. final average error = {average_pixel_error(final_error)}");
                     this.ResetSelf();
                     this.GetImageD();
                 }

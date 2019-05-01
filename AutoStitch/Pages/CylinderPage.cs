@@ -10,7 +10,7 @@ namespace AutoStitch.Pages
 {
     partial class CylinderPage:ContentControl
     {
-        const int pixel_width = 5000 / 2, pixel_height = 600 / 2;
+        const int pixel_width = 5000 , pixel_height = 600;
         SourceImagePanel source_image_panel = new SourceImagePanel(false);
         ContentControl image_container = new ContentControl();
         private void InitializeViews()

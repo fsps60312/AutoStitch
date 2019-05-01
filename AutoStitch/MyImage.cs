@@ -162,6 +162,16 @@ namespace AutoStitch
             palette = template.palette;
         }
         public MyImageD(MyImageD image) : this((double[])image.data.Clone(), image) { }
+        public MyImageD(int width,int height)
+        {
+            this.data = new double[width * height * 4];
+            this.height = height;
+            this.width = width;
+            this.stride = width * 4;
+            this.dpi_x = this.dpi_y = 300;
+            this.format = PixelFormats.Bgra32;
+            this.palette = null;
+        }
         public MyImageD(double[] _data, int _width, int _height, int _stride, double _dpi_x, double _dpi_y, PixelFormat _format, BitmapPalette _palette)
         {
             data = _data;

@@ -67,7 +67,9 @@
     </ApplicationDefinition>
     <Compile Include="Controls\PointSelect.cs" />
     <Compile Include="Extensions.cs" />
+    <Compile Include="ImageD_Providers\GaussianBlur.cs" />
     <Compile Include="ImageD_Providers\ImageD_Cache.cs" />
+    <Compile Include="ImageD_Providers\Scale.cs" />
     <Compile Include="ImageD_Providers\PlotPoints.cs" />
     <Compile Include="MatrixProviders\Filter.cs" />
     <Compile Include="MyDS\DisjointSets.cs" />
@@ -94,6 +96,7 @@
     <Compile Include="PointsProviders\MSOP_DescriptorVector.cs" />
     <Compile Include="PointsProviders\MSOP_DescriptorVector.Descriptor.cs" />
     <Compile Include="PointsProviders\HarrisCornerDetector.cs" />
+    <Compile Include="PointsProviders\MultiScaleFeaturePoints.cs" />
     <Compile Include="PointsProviders\PointsCache.cs" />
     <Compile Include="PointsProviders\SubpixelRefinement.cs" />
     <Compile Include="Providers\IImageD_Provider.cs" />

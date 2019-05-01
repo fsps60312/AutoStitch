@@ -17,9 +17,9 @@ namespace AutoStitch.PointsProviders
             IMatrixProvider mp_harris = new MatrixProviders.Add(mp_hr, mp_hg, mp_hb);
             IPointsProvider
                 pp_harris_filtered = new PointsProviders.LocalMaximum(mp_harris, 10 * 3.0 / (255.0 * 255.0)),
-                pp_harris_refined = new PointsProviders.SubpixelRefinement(pp_harris_filtered, mp_harris),
-                pp_harris_eliminated = new PointsProviders.AdaptiveNonmaximalSuppression(pp_harris_refined, 500);
-            this.points_provider = pp_harris_eliminated;
+                pp_harris_refined = new PointsProviders.SubpixelRefinement(pp_harris_filtered, mp_harris);
+                //pp_harris_eliminated = new PointsProviders.AdaptiveNonmaximalSuppression(pp_harris_refined, 500);
+            this.points_provider = pp_harris_refined;
         }
         public override void Reset()
         {

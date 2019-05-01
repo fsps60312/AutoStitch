@@ -34,9 +34,21 @@ namespace AutoStitch
             if (!instance.Dispatcher.CheckAccess()) instance.Dispatcher.Invoke(() => instance._Log(text));
             else instance._Log(text);
         }
+        public static void Log(MyImageD img)
+        {
+            if (!instance.Dispatcher.CheckAccess()) instance.Dispatcher.Invoke(() => instance._Log(img));
+            else instance._Log(img);
+        }
+        void pop_children() { if (stackPanel.Children.Count > 1000) stackPanel.Children.RemoveAt(0); }
+        void _Log(MyImageD img)
+        {
+            pop_children();
+            stackPanel.Children.Add(new Image { MaxHeight = 300, Source = img.ToImage().ToBitmapSource() });
+            scrollViewer.ScrollToBottom();
+        }
         void _Log(string text)
         {
-            if (stackPanel.Children.Count > 1000) stackPanel.Children.RemoveAt(0);
+            pop_children();
             stackPanel.Children.Add(new Label { Content = text });
             scrollViewer.ScrollToBottom();
         }

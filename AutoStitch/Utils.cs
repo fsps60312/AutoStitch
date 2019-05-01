@@ -8,6 +8,11 @@ namespace AutoStitch
 {
     public static class Utils
     {
+        public static bool AllTheSame(params object[] objects)
+        {
+            for (int i = 1; i < objects.Length; i++) if (!objects[0].Equals(objects[i])) return false;
+            return true;
+        }
         static Random rand = new Random();
         public static double RandDouble() { return rand.NextDouble(); }
         /// <summary>

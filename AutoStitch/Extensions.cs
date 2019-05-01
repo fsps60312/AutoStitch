@@ -12,11 +12,6 @@ namespace AutoStitch
 {
     public static class Extensions
     {
-        public static bool AllTheSame(params object[]objects)
-        {
-            for (int i = 1; i < objects.Length; i++) if (!objects[0].Equals(objects[i])) return false;
-            return true;
-        }
         public static double Clamp(this double v,double mn,double mx) { return Math.Max(mn, Math.Min(mx, v)); }
         public static byte ClampByte(this double v)
         {

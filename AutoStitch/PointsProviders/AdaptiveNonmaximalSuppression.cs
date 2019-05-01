@@ -37,6 +37,7 @@ namespace AutoStitch.PointsProviders
         protected override List<ImagePoint> GetPointsInternal()
         {
             List<ImagePoint> ps = provider.GetPoints();
+            if (ps.Count == 0) return ps;
             double l = 0, r = Math.Sqrt(Math.Pow(ps.Max(p => p.x), 2) + Math.Pow(ps.Max(p => p.y), 2));
             while(r-l>1e-9)
             {

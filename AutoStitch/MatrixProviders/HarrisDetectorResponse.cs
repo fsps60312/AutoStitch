@@ -29,8 +29,8 @@ namespace AutoStitch.MatrixProviders
                 double[,] data_xx = provider_xx.GetMatrix().data;
                 double[,] data_xy = provider_xy.GetMatrix().data;
                 double[,] data_yy = provider_yy.GetMatrix().data;
-                System.Diagnostics.Trace.Assert(Extensions.AllTheSame(data_xx.GetLength(0), data_xy.GetLength(0), data_yy.GetLength(0)));
-                System.Diagnostics.Trace.Assert(Extensions.AllTheSame(data_xx.GetLength(1), data_xy.GetLength(1), data_yy.GetLength(1)));
+                System.Diagnostics.Trace.Assert(Utils.AllTheSame(data_xx.GetLength(0), data_xy.GetLength(0), data_yy.GetLength(0)));
+                System.Diagnostics.Trace.Assert(Utils.AllTheSame(data_xx.GetLength(1), data_xy.GetLength(1), data_yy.GetLength(1)));
                 double[,] data = new double[data_xx.GetLength(0), data_xx.GetLength(1)];
                 Parallel.For(0, data.GetLength(0), i =>
                 {
