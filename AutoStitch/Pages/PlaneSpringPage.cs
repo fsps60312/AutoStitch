@@ -162,7 +162,7 @@ namespace AutoStitch.Pages
             int kase_self = System.Threading.Interlocked.Increment(ref kase);
             await Task.Run(() =>
             {
-                List<IPointsProvider> points_providers = source_image_panel.GetImages().Select(i => new ImageD_Providers.ImageD_Cache(i.ToImageD()) as IImageD_Provider).Select(i => new PointsProviders.MSOP_DescriptorVector(new PointsProviders.MultiScaleHarrisCornerDetector(i), new MatrixProviders.GrayScale(i)) as IPointsProvider).ToList();
+                List<IPointsProvider> points_providers = source_image_panel.GetImages().Select(i => new ImageD_Providers.ImageD_Cache(i.ToImageD()) as IImageD_Provider).Select(i => new PointsProviders.MSOP_DescriptorVector(new PointsProviders.HarrisCornerDetector(i), new MatrixProviders.GrayScale(i)) as IPointsProvider).ToList();
                 List<IImageD_Provider> image_providers = source_image_panel.GetImages().Select((i, idx) => new ImageD_Providers.PlotPoints(new ImageD_Providers.ImageD_Cache(i.ToImageD()), points_providers[idx]) as IImageD_Provider).ToList();
                 var provider = new PlaneImages(image_providers, 1000, 600);
                 image_container.Dispatcher.Invoke(() => image_container.Content = new ImageViewer(provider,false));

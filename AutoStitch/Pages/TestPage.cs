@@ -16,8 +16,8 @@ namespace AutoStitch.Pages
             source_image_panel = new SourceImagePanel();
             IImageD_Provider main_image = source_image_panel.GetImageD_Provider(0);
             IImageD_Provider side_image = source_image_panel.GetImageD_Provider(1);
-            IPointsProvider<PointsProviders.MSOP_DescriptorVector.Descriptor> main_feature_points_provider = new PointsProviders.MSOP_DescriptorVector(new PointsProviders.MultiScaleHarrisCornerDetector(main_image), new MatrixProviders.GrayScale(main_image));
-            IPointsProvider<PointsProviders.MSOP_DescriptorVector.Descriptor> side_feature_points_provider = new PointsProviders.MSOP_DescriptorVector(new PointsProviders.MultiScaleHarrisCornerDetector(side_image), new MatrixProviders.GrayScale(side_image));
+            IPointsProvider<PointsProviders.MSOP_DescriptorVector.Descriptor> main_feature_points_provider = new PointsProviders.MSOP_DescriptorVector(new PointsProviders.HarrisCornerDetector(main_image), new MatrixProviders.GrayScale(main_image));
+            IPointsProvider<PointsProviders.MSOP_DescriptorVector.Descriptor> side_feature_points_provider = new PointsProviders.MSOP_DescriptorVector(new PointsProviders.HarrisCornerDetector(side_image), new MatrixProviders.GrayScale(side_image));
             IImageD_Provider mp_merge_refined = new ImageD_Providers.PlotPoints(
                                     new ImageD_Providers.GrayImageD(new MatrixProviders.GrayScale(main_image)),
                                     main_feature_points_provider

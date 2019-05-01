@@ -14,7 +14,7 @@ namespace AutoStitch.Pages
             const int min_num_inliners = 10;
             public CorrectiveCylinderImages(List<IImageD_Provider> image_providers, int width, int height):base(image_providers,width,height)
             {
-                points_providers= this.image_providers.Select(i => new PointsProviders.MSOP_DescriptorVector(new PointsProviders.MultiScaleHarrisCornerDetector(i), new MatrixProviders.GrayScale(i)) as IPointsProvider).ToList();
+                points_providers= this.image_providers.Select(i => new PointsProviders.MSOP_DescriptorVector(new PointsProviders.HarrisCornerDetector(i), new MatrixProviders.GrayScale(i)) as IPointsProvider).ToList();
             }
             List<List<ImagePoint<PointsProviders.MSOP_DescriptorVector.Descriptor>>> points;
             List<int>[,] points_match_list_cache = null;
@@ -131,7 +131,8 @@ namespace AutoStitch.Pages
                     img.transform.center_direction = prefix_sum_dx / sum_dx * 2.0 * Math.PI;
                     img.transform.focal_length = 0.5 * img.width / Math.Tan(width_ratio * Math.PI);
                     img.transform.rotation_theta = 0;
-                    img.transform.scalar_alpha = 1;
+                    img.transform.scalar_x = 1;
+                    img.transform.scalar_y = 1;
                     img.transform.displace_x = 0;
                     img.transform.displace_y = prefix_sum_dy - sum_dy * (prefix_sum_dx / sum_dx);
                     prefix_sum_dx += dx_seq[i];
@@ -139,7 +140,7 @@ namespace AutoStitch.Pages
                 }
             }
             int refine_count = 0;
-            public bool Refine(bool allow_perspective, bool verbose)
+            public bool Refine(bool allow_perspective,bool allow_skew, bool verbose)
             {
                 ++refine_count;
                 if (verbose) LogPanel.Log($"refining #{refine_count}...");
@@ -198,14 +199,15 @@ namespace AutoStitch.Pages
                     var matches = all_matches[i];
                     (CylinderImage.Transform derivative, double error) = cylinder_images[i].get_derivatives(1, matches);
                     if (!allow_perspective) derivative.perspective_x = derivative.perspective_y = 0;
+                    if (!allow_skew) derivative.skew = 0;
                     info.Add((derivative, error));
                 }
                 double total_error = info.Sum(v => v.Item2);
                 double d_sum = info.Sum(v => v.Item1.square_sum());
                 if (verbose)
                 {
-                    LogPanel.Log("number of inliners matrix:");
-                    LogPanel.Log(sb_inliners.ToString());
+                    System.Diagnostics.Trace.WriteLine("number of inliners matrix:");
+                    System.Diagnostics.Trace.WriteLine(sb_inliners.ToString());
                     LogPanel.Log($"average error: {total_error / num_error_entries * average_focal_length}");
                 }
                 //if (double.IsNaN(step_size)) step_size = total_error / d_sum * 0.1;
@@ -214,7 +216,6 @@ namespace AutoStitch.Pages
                 var restore_all = new Action(() => { for (int i = 0; i < n; i++) cylinder_images[i].restore(); });
                 var apply_change_all = new Func<double, double>(_ =>
                  {
-                     if (verbose) LogPanel.Log($"multiplier = {_}");
                      restore_all();
                      for (int i = 0; i < n; i++) cylinder_images[i].apply_change(info[i].Item1 * -(_ * total_error));
                      double ans = 0;
@@ -228,8 +229,14 @@ namespace AutoStitch.Pages
                 {
                     double pixel_error=apply_change_all(0) / num_error_entries * average_focal_length;
                     LogPanel.Log($"refine #{refine_count}: cannot improve, pixel error = {pixel_error}");
+                    for(int i=0;i<n;i++)
+                    {
+                        LogPanel.Log($"derivatives of image[{i}]:");
+                        LogPanel.Log(cylinder_images[i].get_derivatives(1, all_matches[i]).Item1.ToString());
+                    }
                     return false;
                 }
+                if (verbose) LogPanel.Log($"multiplier = {multiplier}");
                 double final_error=apply_change_all(multiplier);
                 if (verbose)
                 {

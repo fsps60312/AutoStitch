@@ -125,7 +125,7 @@ namespace AutoStitch.Pages
             await Task.Run(() =>
             {
                 var images = source_image_panel.GetImages();
-                List<IPointsProvider> points_providers = images.Select(i => new ImageD_Providers.ImageD_Cache(i.ToImageD()) as IImageD_Provider).Select(i => new PointsProviders.MSOP_DescriptorVector(new PointsProviders.MultiScaleHarrisCornerDetector(i), new MatrixProviders.GrayScale(i)) as IPointsProvider).ToList();
+                List<IPointsProvider> points_providers = images.Select(i => new ImageD_Providers.ImageD_Cache(i.ToImageD()) as IImageD_Provider).Select(i => new PointsProviders.MSOP_DescriptorVector(new PointsProviders.HarrisCornerDetector(i), new MatrixProviders.GrayScale(i)) as IPointsProvider).ToList();
                 List<IImageD_Provider> image_providers = images.Select((i, idx) => new ImageD_Providers.PlotPoints(new ImageD_Providers.ImageD_Cache(i.ToImageD()), points_providers[idx]) as IImageD_Provider).ToList();
                 var global_viewer = new Func<PlaneImages>(() =>
                  {

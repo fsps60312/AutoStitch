@@ -36,7 +36,7 @@ namespace AutoStitch
         }
         void _Log(string text)
         {
-            if (stackPanel.Children.Count > 100) stackPanel.Children.RemoveAt(0);
+            if (stackPanel.Children.Count > 1000) stackPanel.Children.RemoveAt(0);
             stackPanel.Children.Add(new Label { Content = text });
             scrollViewer.ScrollToBottom();
         }

@@ -10,7 +10,7 @@ namespace AutoStitch.Pages
 {
     partial class CylinderPage:ContentControl
     {
-        const int pixel_width = 5000, pixel_height = 600;
+        const int pixel_width = 5000 / 2, pixel_height = 600 / 2;
         SourceImagePanel source_image_panel = new SourceImagePanel(false);
         ContentControl image_container = new ContentControl();
         private void InitializeViews()
@@ -60,25 +60,40 @@ namespace AutoStitch.Pages
             {
                 global_viewer.InitializeOnPlane();
                 bool allow_perspective = false;
+                bool allow_skew = false;
                 for (DateTime time = DateTime.MinValue; ;)
                 {
                     bool verbose = false;
                     if ((DateTime.Now - time).TotalSeconds > 10) verbose = true;
-                    if (!global_viewer.Refine(allow_perspective, verbose))
+                    if (!global_viewer.Refine(allow_perspective, allow_skew, verbose))
                     {
                         if (allow_perspective)
                         {
-                            LogPanel.Log("done. generating image...");
-                            global_viewer.ResetSelf();
-                            global_viewer.GetImageD();
-                            LogPanel.Log("ok.");
-                            break;
+                            if (allow_skew)
+                            {
+                                LogPanel.Log("done. generating image...");
+                                global_viewer.ResetSelf();
+                                global_viewer.GetImageD();
+                                time = DateTime.Now;
+                                LogPanel.Log("ok.");
+                                break;
+                            }
+                            else
+                            {
+                                LogPanel.Log($"skew change on.");
+                                global_viewer.ResetSelf();
+                                global_viewer.GetImageD();
+                                time = DateTime.Now;
+                                LogPanel.Log("this is current result without skew changes.");
+                                allow_skew = true;
+                            }
                         }
                         else
                         {
                             LogPanel.Log($"perspective change on.");
                             global_viewer.ResetSelf();
                             global_viewer.GetImageD();
+                            time = DateTime.Now;
                             LogPanel.Log("this is current result without perspective changes.");
                             allow_perspective = true;
                         }

@@ -41,7 +41,7 @@ namespace AutoStitch.Pages
             /// <summary>
             /// 
             /// </summary>
-            /// <param name="beta"></param>
+            /// <param name="error_weight_h"></param>
             /// <param name="matches">matched points of image positions</param>
             /// <param name="alpha"></param>
             /// <param name="theta"></param>
@@ -49,47 +49,52 @@ namespace AutoStitch.Pages
             /// <param name="dy"></param>
             /// <param name="df"></param>
             /// <param name="dt"></param>
-            public (Transform, double) get_derivatives(double beta, List<Tuple<Tuple<double, double>, Tuple<double, double>, CylinderImage>> matches)
+            public (Transform, double) get_derivatives(double error_weight_h, List<Tuple<Tuple<double, double>, Tuple<double, double>, CylinderImage>> matches)
             {
-                Transform derivative = new Transform(null, 0, 0, 0, 0, 0, 0, 0, 0);
+                Transform derivative = new Transform(null, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
                 double total_error = 0;
                 foreach (var match in matches)
                 {
-                    //  h=((xαsinθ+yαcosθ+y')/(xp+qy+1))/sqrt(f*f+x*x)
-                    //  w=t+atan(((xαcosθ-yαsinθ+x')/(xp+qy+1))/f)
+                    //  w=t+atan(((xαcosθ+yα(scosθ-sinθ)+x')/(xp+qy+1))/f)
+                    //  h=((xαsinθ+yα(ssinθ+cosθ)+y')/(xp+qy+1))/sqrt(f*f+x*x)
                     (double x, double y) = (match.Item1.Item1 - 0.5 * width, match.Item1.Item2 - 0.5 * height);
                     double pq_term = x * perspective_x + y * perspective_y + 1;
                     double fx_term = Math.Sqrt(focal_length * focal_length + x * x);
-                    double h_term = x * Math.Sin(rotation_theta) + y * Math.Cos(rotation_theta);
-                    double dh_term = x * Math.Cos(rotation_theta) - y * Math.Sin(rotation_theta);
-                    double w_term = x * Math.Cos(rotation_theta) - y * Math.Sin(rotation_theta);
-                    double dw_term = -x * Math.Sin(rotation_theta) - y * Math.Cos(rotation_theta);
-                    double inside_tan = (scalar_alpha * w_term + displace_x) / pq_term / focal_length;
+                    double sin = Math.Sin(rotation_theta), cos = Math.Cos(rotation_theta);
+                    double w_term = scalar_x * x * cos + scalar_y * y * (skew * cos - sin);
+                    double dw_term = scalar_x * x * -sin + scalar_y * y * (skew * -sin - cos);
+                    double h_term = scalar_x * x * sin + scalar_y * y * (skew * sin + cos);
+                    double dh_term = scalar_x * x * cos + scalar_y * y * (skew * cos - sin);
+                    double inside_tan = (w_term + displace_x) / pq_term / focal_length;
                     double one_x_2 = 1 + inside_tan * inside_tan;
                     (double w1, double h1) = image_point_to_camera(match.Item1.Item1, match.Item1.Item2);
                     (double w2, double h2) = match.Item3.image_point_to_camera(match.Item2.Item1, match.Item2.Item2);
                     if (w2 - w1 > Math.PI) w1 += 2.0 * Math.PI;
                     else if (w1 - w2 > Math.PI) w2 += 2.0 * Math.PI;
 
-                    derivative.scalar_alpha += (w1 - w2) * ((w_term / pq_term / focal_length) / one_x_2) +
-                        beta * (h1 - h2) * (h_term / pq_term / fx_term);
-                    derivative.rotation_theta += (w1 - w2) * (((scalar_alpha * dw_term) / pq_term / focal_length) / one_x_2) +
-                        beta * (h1 - h2) * ((scalar_alpha * dh_term) / pq_term / fx_term);
+                    derivative.scalar_x += (w1 - w2) * ((x * cos / pq_term / focal_length) / one_x_2) +
+                        error_weight_h * (h1 - h2) * (x * sin / pq_term / fx_term);
+                    derivative.scalar_y += (w1 - w2) * ((y * (skew * cos - sin) / pq_term / focal_length) / one_x_2) +
+                        error_weight_h * (h1 - h2) * (y * (skew * sin + cos) / pq_term / fx_term);
+                    derivative.rotation_theta += (w1 - w2) * (((dw_term) / pq_term / focal_length) / one_x_2) +
+                        error_weight_h * (h1 - h2) * ((dh_term) / pq_term / fx_term);
                     derivative.displace_x += (w1 - w2) * ((1 / pq_term / focal_length) / one_x_2);
-                    derivative.displace_y += beta * (h1 - h2) * (1 / pq_term / fx_term);
-                    derivative.focal_length += (w1 - w2) * ((-(scalar_alpha * w_term + displace_x) / (pq_term * focal_length * focal_length)) / one_x_2) +
-                         beta * (h1 - h2) * (
-                         ((scalar_alpha * h_term + displace_y) / pq_term) *
+                    derivative.displace_y += error_weight_h * (h1 - h2) * (1 / pq_term / fx_term);
+                    derivative.skew += (w1 - w2) * ((y * cos / pq_term / focal_length) / one_x_2) +
+                        error_weight_h * (h1 - h2) * (y * sin / pq_term / fx_term);
+                    derivative.focal_length += (w1 - w2) * ((-(w_term + displace_x) / (pq_term * focal_length * focal_length)) / one_x_2) +
+                         error_weight_h * (h1 - h2) * (
+                         ((h_term + displace_y) / pq_term) *
                          (-0.5 * Math.Pow(focal_length * focal_length + x * x, -1.5)) *
                          (2 * focal_length));
                     derivative.center_direction += (w1 - w2);
-                    double dw_perspective = (-(scalar_alpha * w_term + displace_x) / (focal_length * pq_term * pq_term)) / one_x_2;
-                    double dh_perspective = -(scalar_alpha * h_term + displace_y) / (fx_term * pq_term * pq_term);
+                    double dw_perspective = (-(w_term  + displace_x) / (focal_length * pq_term * pq_term)) / one_x_2;
+                    double dh_perspective = -(h_term + displace_y) / (fx_term * pq_term * pq_term);
                     derivative.perspective_x += (w1 - w2) * (dw_perspective * x) +
-                         beta * (h1 - h2) * (dh_perspective * x);
+                         error_weight_h * (h1 - h2) * (dh_perspective * x);
                     derivative.perspective_y += (w1 - w2) * (dw_perspective * y) +
-                         beta * (h1 - h2) * (dh_perspective * y);
-                    total_error += beta * (h1 - h2) * (h1 - h2) + (w1 - w2) * (w1 - w2);
+                         error_weight_h * (h1 - h2) * (dh_perspective * y);
+                    total_error += error_weight_h * (h1 - h2) * (h1 - h2) + (w1 - w2) * (w1 - w2);
                 }
                 derivative *= 2;
                 // regularization
@@ -104,7 +109,8 @@ namespace AutoStitch.Pages
             {
                 public double center_direction;
                 public double focal_length;
-                public double rotation_theta = 0, scalar_alpha = 1, displace_x = 0, displace_y = 0, perspective_x = 0, perspective_y = 0;
+                public double rotation_theta = 0, scalar_x = 1,scalar_y=1, displace_x = 0, displace_y = 0, perspective_x = 0, perspective_y = 0;
+                public double skew = 0;
                 CylinderImage parent;
                 public Transform Copy()
                 {
@@ -113,32 +119,39 @@ namespace AutoStitch.Pages
                         center_direction = center_direction,
                         focal_length = focal_length,
                         rotation_theta = rotation_theta,
-                        scalar_alpha = scalar_alpha,
+                        scalar_x = scalar_x,
+                        scalar_y = scalar_y,
                         displace_x = displace_x,
                         displace_y = displace_y,
                         perspective_x = perspective_x,
-                        perspective_y = perspective_y
+                        perspective_y = perspective_y,
+                        skew = skew
                     };
                 }
                 public Transform(CylinderImage parent) { this.parent = parent; }
-                public Transform(CylinderImage parent,double center_direction,double focal_length, double rotation_theta ,double scalar_alpha,double displace_x,double displace_y ,double perspective_x ,double perspective_y):this(parent)
+                public Transform(CylinderImage parent,double center_direction,double focal_length, double rotation_theta ,double scalar_x,double scalar_y,double displace_x,double displace_y ,double perspective_x ,double perspective_y,double skew):this(parent)
                 {
                     this.center_direction = center_direction;
                     this.focal_length = focal_length;
                     this.rotation_theta = rotation_theta;
-                    this.scalar_alpha = scalar_alpha;
+                    this.scalar_x = scalar_x;
+                    this.scalar_y = scalar_y;
                     this.displace_x = displace_x;
                     this.displace_y = displace_y;
                     this.perspective_x = perspective_x;
                     this.perspective_y = perspective_y;
+                    this.skew = skew;
                 }
                 private double[,] get_matrix()
                 {
+                    // (x,y)=(x+fy,y)
+                    // (x,y)=(a(x+fy)cos(r)-aysin(r),a(x+fy)sin(r)+aycos(r))
+                    //      =(xacos(r)+ya(fcos(r)-sin(r)),xasin(r)+ya(fsin(r)+cos(r)))
                     return new double[3, 3]
                     {
-                    {scalar_alpha*Math.Cos(rotation_theta),-scalar_alpha*Math.Sin(rotation_theta),displace_x },
-                    {scalar_alpha*Math.Sin(rotation_theta),scalar_alpha*Math.Cos(rotation_theta),displace_y },
-                    {perspective_x,perspective_y,1 }
+                        {scalar_x*Math.Cos(rotation_theta),scalar_y*(skew*Math.Cos(rotation_theta)-Math.Sin(rotation_theta)),displace_x },
+                        {scalar_x*Math.Sin(rotation_theta),scalar_y*(skew*Math.Sin(rotation_theta)+Math.Cos(rotation_theta)),displace_y },
+                        {perspective_x,perspective_y,1 }
                     };
                 }
                 private static double[,] inverse(double[,] a)
@@ -217,6 +230,10 @@ namespace AutoStitch.Pages
                     double[] a = multiply(get_matrix(), new[] { x, y, 1 });
                     (double w, double h) = (Utils.Mod2PI(center_direction + Math.Atan((a[0] / a[2]) / focal_length)),
                             (a[1] / a[2]) / Math.Sqrt(x * x + focal_length * focal_length));
+                    {
+                        (double x_recover, double y_recover) = untransform((w, h));
+                        System.Diagnostics.Trace.Assert(Math.Sqrt(Math.Pow(x_recover - x, 2) + Math.Pow(y_recover - y, 2)) < 1e-2);
+                    }
                     return (w, h);
                 }
                 public (double,double)untransform((double,double)p)
@@ -238,11 +255,26 @@ namespace AutoStitch.Pages
                     return center_direction * center_direction +
                         focal_length * focal_length +
                         rotation_theta * rotation_theta +
-                        scalar_alpha * scalar_alpha +
+                        scalar_x * scalar_x +
+                        scalar_y * scalar_y +
                         displace_x * displace_x +
                         displace_y * displace_y +
                         perspective_x * perspective_x +
-                        perspective_y * perspective_y;
+                        perspective_y * perspective_y +
+                        skew * skew;
+                }
+                public override string ToString()
+                {
+                    return $"center_direction = {center_direction}\n" +
+                        $"focal_length = {focal_length}\n" +
+                        $"rotation_theta = {rotation_theta}\n" +
+                        $"scalar_x = {scalar_x}\n" +
+                        $"scalar_y = {scalar_y}\n" +
+                        $"displace_x = {displace_x}\n" +
+                        $"displace_y = {displace_y}\n" +
+                        $"perspective_x = {perspective_x}\n" +
+                        $"perspective_y = {perspective_y}\n" +
+                        $"skew = {skew}";
                 }
                 public static Transform operator+(Transform a,Transform b)
                 {
@@ -250,11 +282,13 @@ namespace AutoStitch.Pages
                         a.center_direction + b.center_direction,
                         a.focal_length + b.focal_length,
                         a.rotation_theta + b.rotation_theta,
-                        a.scalar_alpha + b.scalar_alpha,
+                        a.scalar_x + b.scalar_x,
+                        a.scalar_y + b.scalar_y,
                         a.displace_x + b.displace_x,
                         a.displace_y + b.displace_y,
                         a.perspective_x + b.perspective_x,
-                        a.perspective_y + b.perspective_y);
+                        a.perspective_y + b.perspective_y,
+                        a.skew + b.skew);
                 }
                 public static Transform operator*(Transform a,double b)
                 {
@@ -262,23 +296,27 @@ namespace AutoStitch.Pages
                         a.center_direction * b,
                         a.focal_length * b,
                         a.rotation_theta * b,
-                        a.scalar_alpha * b,
+                        a.scalar_x * b,
+                        a.scalar_y * b,
                         a.displace_x * b,
                         a.displace_y * b,
                         a.perspective_x * b,
-                        a.perspective_y * b);
+                        a.perspective_y * b,
+                        a.skew * b);
                 }
             }
             public Transform transform;
             private Transform saved_transform = null;
             public double center_direction { get { return transform.center_direction; } }
             public double focal_length { get { return transform.focal_length; } }
-            public double scalar_alpha { get { return transform.scalar_alpha; } }
+            public double scalar_x { get { return transform.scalar_x; } }
+            public double scalar_y { get { return transform.scalar_y; } }
             public double rotation_theta { get { return transform.rotation_theta; } }
             public double perspective_x { get { return transform.perspective_x; } }
             public double perspective_y { get { return transform.perspective_y; } }
             public double displace_y { get { return transform.displace_y; } }
             public double displace_x { get { return transform.displace_x; } }
+            public double skew { get { return transform.skew; } }
             public void save() { saved_transform = transform.Copy(); }
             public void restore() { System.Diagnostics.Trace.Assert(saved_transform != null); transform = saved_transform.Copy(); }
             public void apply_change(Transform transform_change) { transform += transform_change; }
