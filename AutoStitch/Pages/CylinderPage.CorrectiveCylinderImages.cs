@@ -139,7 +139,7 @@ namespace AutoStitch.Pages
                 }
             }
             int refine_count = 0;
-            public void Refine(bool verbose = true)
+            public bool Refine(bool allow_perspective, bool verbose)
             {
                 ++refine_count;
                 if (verbose) LogPanel.Log($"refining #{refine_count}...");
@@ -196,7 +196,9 @@ namespace AutoStitch.Pages
                 for (int i = 0; i < n; i++)
                 {
                     var matches = all_matches[i];
-                    info.Add(cylinder_images[i].get_derivatives(1, matches));
+                    (CylinderImage.Transform derivative, double error) = cylinder_images[i].get_derivatives(1, matches);
+                    if (!allow_perspective) derivative.perspective_x = derivative.perspective_y = 0;
+                    info.Add((derivative, error));
                 }
                 double total_error = info.Sum(v => v.Item2);
                 double d_sum = info.Sum(v => v.Item1.square_sum());
@@ -222,6 +224,12 @@ namespace AutoStitch.Pages
                 double multiplier = 1e-9;
                 double current_error = apply_change_all(multiplier);
                 for (double nxt_error; (nxt_error = apply_change_all(multiplier * 2)) < current_error; current_error = nxt_error, multiplier *= 2) ;
+                if(multiplier==1e-9)
+                {
+                    double pixel_error=apply_change_all(0) / num_error_entries * average_focal_length;
+                    LogPanel.Log($"refine #{refine_count}: cannot improve, pixel error = {pixel_error}");
+                    return false;
+                }
                 double final_error=apply_change_all(multiplier);
                 if (verbose)
                 {
@@ -229,6 +237,7 @@ namespace AutoStitch.Pages
                     this.ResetSelf();
                     this.GetImageD();
                 }
+                return true;
                 //System.Threading.Thread.Sleep(1000000000);
             }
             public void InitializeOnPlane()

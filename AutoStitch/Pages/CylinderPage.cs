@@ -10,6 +10,7 @@ namespace AutoStitch.Pages
 {
     partial class CylinderPage:ContentControl
     {
+        const int pixel_width = 5000, pixel_height = 600;
         SourceImagePanel source_image_panel = new SourceImagePanel(false);
         ContentControl image_container = new ContentControl();
         private void InitializeViews()
@@ -48,7 +49,7 @@ namespace AutoStitch.Pages
         async void StartSimulation()
         {
             int kase_self = System.Threading.Interlocked.Increment(ref kase);
-            var global_viewer = new CorrectiveCylinderImages(source_image_panel.GetImages().Select(i => new ImageD_Providers.ImageD_Cache(i.ToImageD()) as IImageD_Provider).ToList(), 5000 / 2, 600 / 2);
+            var global_viewer = new CorrectiveCylinderImages(source_image_panel.GetImages().Select(i => new ImageD_Providers.ImageD_Cache(i.ToImageD()) as IImageD_Provider).ToList(), pixel_width, pixel_height);
             image_container.Content = new ScrollViewer
             {
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
@@ -58,23 +59,32 @@ namespace AutoStitch.Pages
             await Task.Run(() =>
             {
                 global_viewer.InitializeOnPlane();
-                for(DateTime time=DateTime.MinValue; ;)
+                bool allow_perspective = false;
+                for (DateTime time = DateTime.MinValue; ;)
                 {
                     bool verbose = false;
                     if ((DateTime.Now - time).TotalSeconds > 10) verbose = true;
-                    global_viewer.Refine(verbose);
-                    if(verbose) time = DateTime.Now;
+                    if (!global_viewer.Refine(allow_perspective, verbose))
+                    {
+                        if (allow_perspective)
+                        {
+                            LogPanel.Log("done. generating image...");
+                            global_viewer.ResetSelf();
+                            global_viewer.GetImageD();
+                            LogPanel.Log("ok.");
+                            break;
+                        }
+                        else
+                        {
+                            LogPanel.Log($"perspective change on.");
+                            global_viewer.ResetSelf();
+                            global_viewer.GetImageD();
+                            LogPanel.Log("this is current result without perspective changes.");
+                            allow_perspective = true;
+                        }
+                    }
+                    if (verbose) time = DateTime.Now;
                 }
-                //int run_cnt = 1;
-                //for(int counter=0; ;counter++)
-                //{
-                //    global_viewer.Refine(true);
-                //    DateTime time = DateTime.Now;
-                //    for (int i = 0; i < run_cnt - 1; i++) global_viewer.Refine(false);
-                //    LogPanel.Log($"time eclapsed: {(DateTime.Now - time).TotalSeconds} s");
-                //    if (counter >= 5) run_cnt += Math.Max(1, run_cnt / 2);
-                    
-                //}
             });
         }
         public CylinderPage()

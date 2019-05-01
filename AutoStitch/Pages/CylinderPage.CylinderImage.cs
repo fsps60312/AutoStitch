@@ -93,10 +93,10 @@ namespace AutoStitch.Pages
                 }
                 derivative *= 2;
                 // regularization
-                const double regularization = 1e-5;
-                derivative.perspective_x += regularization * 2 * perspective_x;
-                derivative.perspective_y += regularization * 2 * perspective_y;
-                total_error += regularization * (perspective_x * perspective_x + perspective_y * perspective_y);
+                //const double regularization = 1e-5;
+                //derivative.perspective_x += regularization * 2 * perspective_x;
+                //derivative.perspective_y += regularization * 2 * perspective_y;
+                //total_error += regularization * (perspective_x * perspective_x + perspective_y * perspective_y);
                 return (derivative, total_error);
             }
             IImageD_Provider image_provider;
