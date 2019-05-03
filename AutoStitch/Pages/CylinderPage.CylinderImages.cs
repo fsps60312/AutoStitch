@@ -14,7 +14,7 @@ namespace AutoStitch.Pages
             public CylinderImages(List<IImageD_Provider> image_providers, int width, int height)
             {
                 this.image_providers = image_providers;
-                this.cylinder_images = image_providers.Select(p => new CylinderImage(p, Utils.RandDouble() * 2.0 * Math.PI, 500)).ToList();
+                this.cylinder_images = image_providers.Select(p => new CylinderImage(p,Utils.RandDouble() * 2.0 * Math.PI, 500)).ToList();
                 this.width = width;
                 this.height = height;
             }
@@ -28,16 +28,16 @@ namespace AutoStitch.Pages
                       for (int j = 0; j < width; j++)
                       {
                           double r = 0, g = 0, b = 0;
-                          int cnt = 0;
+                          double weight_sum = 0;
                           foreach (var img in cylinder_images)
                           {
-                              if (img.sample_pixel(((double)j / width) * 2.0 * Math.PI, (i * max_h + (height - 1 - i) * min_h) / (height - 1), out double _r, out double _g, out double _b))
+                              if (img.sample_pixel(((double)j / width) * 2.0 * Math.PI, (i * max_h + (height - 1 - i) * min_h) / (height - 1), out double _r, out double _g, out double _b,out double distance_to_corner))
                               {
-                                  r += _r; g += _g; b += _b;
-                                  cnt++;
+                                  r +=distance_to_corner* _r; g += distance_to_corner * _g; b += distance_to_corner * _b;
+                                  weight_sum+= distance_to_corner;
                               }
                           }
-                          if (cnt > 0) { r /= cnt; g /= cnt; b /= cnt; }
+                          if (weight_sum > 0) { r /= weight_sum; g /= weight_sum; b /= weight_sum; }
                           int k = i * image.stride + j * 4;
                           // bgra
                           image.data[k + 0] = b;

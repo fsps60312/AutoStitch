@@ -337,14 +337,18 @@ namespace AutoStitch.Pages
                 this.transform = new Transform(this) { center_direction = center_direction, focal_length = focal_length };
                 this.image_provider.ImageDChanged += i => { this.height = i.height; this.width = i.width; };
             }
-            public bool sample_pixel(double w, double h, out double r, out double g, out double b)
+            public bool sample_pixel(double w, double h, out double r, out double g, out double b,out double distance_to_corner)
             {
                 // h = y*(r/sqrt(x^2+f^2))
                 // a = center_direction+atan(x/f)
                 // r = 1, f fixed, for each "h, a", find "x, y"\
                 MyImageD image = image_provider.GetImageD();
                 (double x, double y) = camera_to_image_point(w, h);
-                return image.sample(x, y, out r, out g, out b);
+                bool sampled = image.sample(x, y, out r, out g, out b);
+                distance_to_corner = sampled ?
+                    Math.Min(Math.Min(image.height - 1 - y, image.width - 1 - x), Math.Min(x, y)) :
+                    double.NaN;
+                return sampled;
             }
         }
     }

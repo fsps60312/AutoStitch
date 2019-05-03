@@ -12,14 +12,19 @@ namespace AutoStitch.Pages
             List<IPointsProvider> points_providers;
             private int n { get { return cylinder_images.Count; } }
             const int min_num_inliners = 10;
-            public CorrectiveCylinderImages(List<IImageD_Provider> image_providers, int width, int height):base(image_providers,width,height)
+            static IPointsProvider get_features_provider(IImageD_Provider image_provider)
             {
                 var points_provider_gen = new Func<IImageD_Provider, IPointsProvider<PointsProviders.MSOP_DescriptorVector.Descriptor>>(
                          i => new PointsProviders.MSOP_DescriptorVector(new PointsProviders.HarrisCornerDetector(i), new MatrixProviders.GrayScale(i)));
-                points_providers = this.image_providers.Select(img =>
-                    new PointsProviders.AdaptiveNonmaximalSuppression(
+                return new PointsProviders.AdaptiveNonmaximalSuppression(
                     new PointsProviders.MultiScaleFeaturePoints<PointsProviders.MSOP_DescriptorVector.Descriptor>(
-                     img, points_provider_gen, 7, 0.5, 1), 2000) as IPointsProvider).ToList();
+                     image_provider, points_provider_gen, 7, 0.5, 1), 500) as IPointsProvider;
+            }
+            public CorrectiveCylinderImages(List<IImageD_Provider> image_providers, int width, int height):base(
+                image_providers.Select(i=>new ImageD_Providers.PlotPoints(i, get_features_provider(i)) as IImageD_Provider).ToList(),
+                width,height)
+            {
+                points_providers = image_providers.Select(img => get_features_provider(img)).ToList();
                 {
                     var provider = image_providers[0];
                     double scale = 1;
