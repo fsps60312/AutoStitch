@@ -70,7 +70,7 @@ namespace AutoStitch.Pages
                 int freedom = 1, cached_freedom = 1;
                 for (DateTime time = DateTime.MinValue; ;)
                 {
-                    freedom = cached_freedom = 10;
+                    //freedom = cached_freedom = 10;
                     if (prev_freedom != (freedom,cached_freedom))
                     {
                         prev_freedom = (freedom, cached_freedom);
@@ -85,9 +85,9 @@ namespace AutoStitch.Pages
                         else freedom = cached_freedom = cached_freedom + 1;
                     }
                     else if (freedom < cached_freedom) cached_freedom = freedom;
-                    if (freedom > CorrectiveCylinderImages.maximum_freedom && false)
+                    if (freedom > CorrectiveCylinderImages.maximum_freedom)
                     {
-                        System.Diagnostics.Trace.Assert(freedom == 7);
+                        //System.Diagnostics.Trace.Assert(freedom == 7);
                         LogPanel.Log("done. generating image...");
                         System.Diagnostics.Trace.Assert(!global_viewer.Refine(CorrectiveCylinderImages.maximum_freedom, true));
                         for (int i = 0; i < global_viewer.cylinder_images.Count; i++)

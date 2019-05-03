@@ -49,7 +49,7 @@ namespace AutoStitch.Pages
             /// <param name="dy"></param>
             /// <param name="df"></param>
             /// <param name="dt"></param>
-            public (Transform, double) get_derivatives(double error_weight_h, List<Tuple<Tuple<double, double>, Tuple<double, double>, CylinderImage>> matches)
+            public (Transform, double) get_derivatives(List<Tuple<Tuple<double, double>, Tuple<double, double>, CylinderImage>> matches)
             {
                 Transform derivative = new Transform(null, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
                 double total_error = 0;
@@ -79,32 +79,33 @@ namespace AutoStitch.Pages
                     (double w2, double h2) = match.Item3.image_point_to_camera(match.Item2.Item1, match.Item2.Item2);
                     if (w2 - w1 > Math.PI) w1 += 2.0 * Math.PI;
                     else if (w1 - w2 > Math.PI) w2 += 2.0 * Math.PI;
-
-                    derivative.scalar_x += (w1 - w2) * ((x * cos / pq_term / focal_length) / one_x_2) +
-                        error_weight_h * (h1 - h2) * (x * sin / pq_term / fx_term);
-                    derivative.scalar_y += (w1 - w2) * ((y * (skew * cos - sin) / pq_term / focal_length) / one_x_2) +
-                        error_weight_h * (h1 - h2) * (y * (skew * sin + cos) / pq_term / fx_term);
-                    derivative.rotation_theta += (w1 - w2) * (((dw_term) / pq_term / focal_length) / one_x_2) +
-                        error_weight_h * (h1 - h2) * ((dh_term) / pq_term / fx_term);
-                    derivative.displace_x += (w1 - w2) * ((1 / pq_term / focal_length) / one_x_2);
-                    derivative.displace_y += error_weight_h * (h1 - h2) * (1 / pq_term / fx_term);
-                    derivative.skew += (w1 - w2) * ((y * cos / pq_term / focal_length) / one_x_2) +
-                        error_weight_h * (h1 - h2) * (y * sin / pq_term / fx_term);
-                    derivative.focal_length += (w1 - w2) * ((-(w_term + displace_x) / (pq_term * focal_length * focal_length)) / one_x_2) +
-                         error_weight_h * (h1 - h2) * (
-                         ((h_term + displace_y) / pq_term) *
+                    var make = new Func<double, double, double>((dw, dh) =>
+                    {
+                        return 2 * ((w1 - w2) * dw + (h1 - h2) * dh);
+                        //return ((w1 - w2) * dw + (h1 - h2) * dh) /
+                        //Math.Sqrt(Math.Pow(w1 - w2, 2) + Math.Pow(h1 - h2, 2));
+                    });
+                    derivative.scalar_x += make(((x * cos / pq_term / focal_length) / one_x_2),
+                        (x * sin / pq_term / fx_term));
+                    derivative.scalar_y += make(((y * (skew * cos - sin) / pq_term / focal_length) / one_x_2),
+                        (y * (skew * sin + cos) / pq_term / fx_term));
+                    derivative.rotation_theta += make((((dw_term) / pq_term / focal_length) / one_x_2),
+                        ((dh_term) / pq_term / fx_term));
+                    derivative.displace_x += make(((1 / pq_term / focal_length) / one_x_2), 0);
+                    derivative.displace_y += make(0, (1 / pq_term / fx_term));
+                    derivative.skew += make(((y * cos / pq_term / focal_length) / one_x_2),
+                        (y * sin / pq_term / fx_term));
+                    derivative.focal_length += make(((-(w_term + displace_x) / (pq_term * focal_length * focal_length)) / one_x_2),
+                         (((h_term + displace_y) / pq_term) *
                          (-0.5 * Math.Pow(focal_length * focal_length + x * x, -1.5)) *
-                         (2 * focal_length));
-                    derivative.center_direction += (w1 - w2);
-                    double dw_perspective = (-(w_term  + displace_x) / (focal_length * pq_term * pq_term)) / one_x_2;
+                         (2 * focal_length)));
+                    derivative.center_direction += make(1, 0);
+                    double dw_perspective = (-(w_term + displace_x) / (focal_length * pq_term * pq_term)) / one_x_2;
                     double dh_perspective = -(h_term + displace_y) / (fx_term * pq_term * pq_term);
-                    derivative.perspective_x += (w1 - w2) * (dw_perspective * x) +
-                         error_weight_h * (h1 - h2) * (dh_perspective * x);
-                    derivative.perspective_y += (w1 - w2) * (dw_perspective * y) +
-                         error_weight_h * (h1 - h2) * (dh_perspective * y);
-                    total_error += error_weight_h * (h1 - h2) * (h1 - h2) + (w1 - w2) * (w1 - w2);
+                    derivative.perspective_x += make((dw_perspective * x), (dh_perspective * x));
+                    derivative.perspective_y += make((dw_perspective * y), (dh_perspective * y));
+                    total_error += (h1 - h2) * (h1 - h2) + (w1 - w2) * (w1 - w2);
                 }
-                derivative *= 2;
                 // regularization
                 //const double regularization = 1e-5;
                 //derivative.perspective_x += regularization * 2 * perspective_x;

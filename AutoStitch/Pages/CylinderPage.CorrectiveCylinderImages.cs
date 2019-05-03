@@ -225,12 +225,12 @@ namespace AutoStitch.Pages
                 var all_matches = get_all_matches(verbose);
                 int num_error_entries = all_matches.Sum(m => m.Count);
                 double average_focal_length = cylinder_images.Sum(i => i.focal_length) / cylinder_images.Count;
-                var average_pixel_error = new Func<double, double>(error => Math.Sqrt(error / num_error_entries) * average_focal_length);
+                var average_pixel_error = new Func<double, double>(error => Math.Pow(error / num_error_entries, 0.5) * average_focal_length);
                 List<(CylinderImage.Transform, double)> info = new List<(CylinderImage.Transform, double)>();
                 for (int i = 0; i < n; i++)
                 {
                     var matches = all_matches[i];
-                    (CylinderImage.Transform derivative, double error) = cylinder_images[i].get_derivatives(1, matches);
+                    (CylinderImage.Transform derivative, double error) = cylinder_images[i].get_derivatives(matches);
                     if (entry != 1) derivative.focal_length = 0;
                     if (entry != 2) derivative.center_direction = 0;
                     if (entry != 3) derivative.displace_y = 0;
@@ -255,10 +255,10 @@ namespace AutoStitch.Pages
                     restore_all();
                     for (int i = 0; i < n; i++) cylinder_images[i].apply_change(info[i].Item1 * -(_ * total_error));
                     double ans = 0;
-                    for (int i = 0; i < n; i++) ans += cylinder_images[i].get_derivatives(1, all_matches[i]).Item2;
+                    for (int i = 0; i < n; i++) ans += cylinder_images[i].get_derivatives( all_matches[i]).Item2;
                     return ans;
                 });
-                double current_error = apply_change_all(-1e-10);
+                double current_error = apply_change_all(-1e-16);
                 apply_change_all(0);
                 return current_error >= total_error;
             }
@@ -269,12 +269,12 @@ namespace AutoStitch.Pages
                 var all_matches = get_all_matches(verbose);
                 int num_error_entries = all_matches.Sum(m => m.Count);
                 double average_focal_length = cylinder_images.Sum(i => i.focal_length) / cylinder_images.Count;
-                var average_pixel_error = new Func<double, double>(error => Math.Sqrt(error / num_error_entries) * average_focal_length);
+                var average_pixel_error = new Func<double, double>(error => Math.Pow(error / num_error_entries, 0.5) * average_focal_length);
                 List<(CylinderImage.Transform, double)> info = new List<(CylinderImage.Transform, double)>();
                 for (int i = 0; i < n; i++)
                 {
                     var matches = all_matches[i];
-                    (CylinderImage.Transform derivative, double error) = cylinder_images[i].get_derivatives(1, matches);
+                    (CylinderImage.Transform derivative, double error) = cylinder_images[i].get_derivatives( matches);
                     if (freedom < 1) derivative.focal_length = 0;
                     if (freedom < 2) derivative.center_direction = 0;
                     if (freedom < 3) derivative.displace_y = 0;
@@ -299,13 +299,13 @@ namespace AutoStitch.Pages
                      restore_all();
                      for (int i = 0; i < n; i++) cylinder_images[i].apply_change(info[i].Item1 * -(_ * total_error));
                      double ans = 0;
-                     for (int i = 0; i < n; i++) ans += cylinder_images[i].get_derivatives(1, all_matches[i]).Item2;
+                     for (int i = 0; i < n; i++) ans += cylinder_images[i].get_derivatives( all_matches[i]).Item2;
                      return ans;
                  });
-                double multiplier = 1e-9;
+                double multiplier = 1e-15;
                 double current_error = apply_change_all(multiplier);
-                for (double nxt_error; (nxt_error = apply_change_all(multiplier * 2)) < current_error; current_error = nxt_error, multiplier *= 2) ;
-                if (multiplier == 1e-9)
+                for (double nxt_error; (nxt_error = apply_change_all(multiplier * 2)) <= current_error; current_error = nxt_error, multiplier *= 2) ;
+                if (current_error >= total_error)
                 {
                     double pixel_error = average_pixel_error(apply_change_all(0));
                     if (verbose)
@@ -314,7 +314,7 @@ namespace AutoStitch.Pages
                         for (int i = 0; i < n; i++)
                         {
                             LogPanel.Log($"derivatives of image[{i}]:");
-                            LogPanel.Log(cylinder_images[i].get_derivatives(1, all_matches[i]).Item1.ToString());
+                            LogPanel.Log(cylinder_images[i].get_derivatives(all_matches[i]).Item1.ToString());
                         }
                         this.ResetSelf();
                         this.GetImageD();
