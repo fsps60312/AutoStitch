@@ -60,7 +60,7 @@ namespace AutoStitch
         /// <param name="accept_ratio">minimum propotion of acceptance that a point is selected</param>
         /// <param name="accept_threshold">mimumum number of acceptances that a point is selected</param>
         /// <returns></returns>
-        public static Tuple<double, double> Vote(List<Tuple<double, double>> points,double tolerance, out int max_num_inliners, int tries = 10)
+        public static Tuple<double, double> Vote(List<Tuple<double, double>> points,double tolerance, out int max_num_inliners, int tries = 50)
         {
             max_num_inliners = 0;
             Tuple<double, double> candidate = null;
@@ -81,7 +81,7 @@ namespace AutoStitch
             List<Tuple<double, double>> inliners = points.Where(p => accepts(p, candidate)).ToList();
             return new Tuple<double, double>(inliners.Sum(p => p.Item1) / inliners.Count, inliners.Sum(p => p.Item2) / inliners.Count);
         }
-        public static List<int> VoteInliners(List<Tuple<double, double>> points, double tolerance, int tries = 10)
+        public static List<int> VoteInliners(List<Tuple<double, double>> points, double tolerance, int tries = 50)
         {
             var accepts = new Func<Tuple<double, double>, Tuple<double, double>, bool>((p, q) =>
             {

@@ -163,7 +163,8 @@ namespace AutoStitch.Pages
                 }
             }
             public int refine_count { get; private set; } = 0;
-            public bool Refine(bool allow_rotation,bool allow_perspective, bool allow_skew, bool verbose)
+            public const int maximum_freedom = 10;
+            public bool Refine(int freedom, bool verbose)
             {
                 ++refine_count;
                 if (verbose) LogPanel.Log($"refining #{refine_count}...");
@@ -221,9 +222,16 @@ namespace AutoStitch.Pages
                 {
                     var matches = all_matches[i];
                     (CylinderImage.Transform derivative, double error) = cylinder_images[i].get_derivatives(1, matches);
-                    if (!allow_rotation) derivative.rotation_theta = 0;
-                    if (!allow_perspective) derivative.perspective_x = derivative.perspective_y = 0;
-                    if (!allow_skew) derivative.skew = 0;
+                    if (freedom < 1) derivative.focal_length = 0;
+                    if (freedom < 2) derivative.center_direction = 0;
+                    if (freedom < 3) derivative.displace_y = 0;
+                    if (freedom < 4) derivative.rotation_theta = 0;
+                    if (freedom < 5) derivative.perspective_y = 0;
+                    if (freedom < 6) derivative.perspective_x = 0;
+                    if (freedom < 7) derivative.scalar_y = 0;
+                    if (freedom < 8) derivative.scalar_x = 0;
+                    if (freedom < 9) derivative.displace_x = 0;
+                    if (freedom < 10) derivative.skew = 0;
                     info.Add((derivative, error));
                 }
                 double total_error = info.Sum(v => v.Item2);

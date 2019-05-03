@@ -66,29 +66,34 @@ namespace AutoStitch.Pages
                 // stage5: true false false (roll back to stage2)
                 // stage6: false false false (roll back to stage1)
                 // stage7: ...
-                (int,int) prev_stage = (-1,-1);
-                int stage = 0, cached_stage = 0;
+                (int,int) prev_freedom = (-1,-1);
+                int freedom = 1, cached_freedom = 1;
                 for (DateTime time = DateTime.MinValue; ;)
                 {
-                    if (prev_stage != (stage,cached_stage))
+                    if (prev_freedom != (freedom,cached_freedom))
                     {
-                        prev_stage = (stage, cached_stage);
-                        LogPanel.Log($"refine #{global_viewer.refine_count+1}: stage: {stage} ← {cached_stage} / 7");
+                        prev_freedom = (freedom, cached_freedom);
+                        LogPanel.Log($"refine #{global_viewer.refine_count+1}: freedom: {freedom} ← {cached_freedom} / {CorrectiveCylinderImages.maximum_freedom}");
                     }
                     bool verbose = false;
                     if ((DateTime.Now - time).TotalSeconds > 30) verbose = true;
-                    bool result = global_viewer.Refine(stage > 0, stage > 1, stage > 2, verbose);
+                    bool result = global_viewer.Refine(freedom, verbose);
                     if (!result)
                     {
-                        if (stage > 0) stage--;
-                        else stage = cached_stage = cached_stage + 1;
+                        if (freedom > 1) freedom--;
+                        else freedom = cached_freedom = cached_freedom + 1;
                     }
-                    else if (stage < cached_stage) cached_stage = stage;
-                    if (stage == 4)
+                    else if (freedom < cached_freedom) cached_freedom = freedom;
+                    if (freedom > CorrectiveCylinderImages.maximum_freedom)
                     {
-                        System.Diagnostics.Trace.Assert(stage == 7);
+                        System.Diagnostics.Trace.Assert(freedom == 7);
                         LogPanel.Log("done. generating image...");
-                        System.Diagnostics.Trace.Assert(!global_viewer.Refine(true, true, true, true));
+                        System.Diagnostics.Trace.Assert(!global_viewer.Refine(CorrectiveCylinderImages.maximum_freedom, true));
+                        for (int i = 0; i < global_viewer.cylinder_images.Count; i++)
+                        {
+                            LogPanel.Log($"params of image[{i}]:");
+                            LogPanel.Log(global_viewer.cylinder_images[i].transform.ToString());
+                        }
                         LogPanel.Log("ok.");
                         return;
                     }
