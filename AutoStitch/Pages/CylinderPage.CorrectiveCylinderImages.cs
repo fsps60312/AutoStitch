@@ -162,12 +162,8 @@ namespace AutoStitch.Pages
                     prefix_sum_dy += dy_seq[i];
                 }
             }
-            public int refine_count { get; private set; } = 0;
-            public const int maximum_freedom = 10;
-            public bool Refine(int freedom, bool verbose)
+            private List<List<Tuple<Tuple<double, double>, Tuple<double, double>, CylinderImage>>> get_all_matches(bool verbose)
             {
-                ++refine_count;
-                if (verbose) LogPanel.Log($"refining #{refine_count}...");
                 System.Text.StringBuilder sb_inliners = new System.Text.StringBuilder();
                 double average_focal_length = cylinder_images.Sum(i => i.focal_length) / cylinder_images.Count;
                 List<List<Tuple<Tuple<double, double>, Tuple<double, double>, CylinderImage>>> all_matches = new List<List<Tuple<Tuple<double, double>, Tuple<double, double>, CylinderImage>>>();
@@ -182,15 +178,15 @@ namespace AutoStitch.Pages
                         List<(int, int)> match_list = new List<(int, int)>();
                         for (int k = 0; k < match_list_raw.Count; k++) if (match_list_raw[k] != -1) match_list.Add((k, match_list_raw[k]));
                         var inliners = Utils.VoteInliners(match_list.Select(_ =>
-                          {
-                              (int p, int q) = _;
-                              (double x1, double y1) = cylinder_images[i].image_point_to_camera(points[i][p].x, points[i][p].y);
-                              (double x2, double y2) = cylinder_images[j].image_point_to_camera(points[j][q].x, points[j][q].y);
-                              if (x2 - x1 > Math.PI) x1 += 2.0 * Math.PI;
-                              else if (x1 - x2 > Math.PI) x2 += 2.0 * Math.PI;
-                              //LogPanel.Log($"{x1},{y1}\t{x2},{y2}");
-                              return Tuple.Create(x1 - x2, y1 - y2);
-                          }).ToList(), 10 / average_focal_length);
+                        {
+                            (int p, int q) = _;
+                            (double x1, double y1) = cylinder_images[i].image_point_to_camera(points[i][p].x, points[i][p].y);
+                            (double x2, double y2) = cylinder_images[j].image_point_to_camera(points[j][q].x, points[j][q].y);
+                            if (x2 - x1 > Math.PI) x1 += 2.0 * Math.PI;
+                            else if (x1 - x2 > Math.PI) x2 += 2.0 * Math.PI;
+                            //LogPanel.Log($"{x1},{y1}\t{x2},{y2}");
+                            return Tuple.Create(x1 - x2, y1 - y2);
+                        }).ToList(), 10 / average_focal_length);
                         sb_inliners.Append(inliners.Count);
                         if (inliners.Count >= min_num_inliners)
                         {
@@ -215,7 +211,64 @@ namespace AutoStitch.Pages
                     sb_inliners.AppendLine();
                     all_matches.Add(matches);
                 }
+                if (verbose)
+                {
+                    System.Diagnostics.Trace.WriteLine("number of inliners matrix:");
+                    System.Diagnostics.Trace.WriteLine(sb_inliners.ToString());
+                }
+                return all_matches;
+            }
+            public int refine_count { get; private set; } = 0;
+            public const int maximum_freedom = 10;
+            public bool Test(int entry,bool verbose)
+            {
+                var all_matches = get_all_matches(verbose);
                 int num_error_entries = all_matches.Sum(m => m.Count);
+                double average_focal_length = cylinder_images.Sum(i => i.focal_length) / cylinder_images.Count;
+                var average_pixel_error = new Func<double, double>(error => Math.Sqrt(error / num_error_entries) * average_focal_length);
+                List<(CylinderImage.Transform, double)> info = new List<(CylinderImage.Transform, double)>();
+                for (int i = 0; i < n; i++)
+                {
+                    var matches = all_matches[i];
+                    (CylinderImage.Transform derivative, double error) = cylinder_images[i].get_derivatives(1, matches);
+                    if (entry != 1) derivative.focal_length = 0;
+                    if (entry != 2) derivative.center_direction = 0;
+                    if (entry != 3) derivative.displace_y = 0;
+                    if (entry != 4) derivative.rotation_theta = 0;
+                    if (entry != 5) derivative.perspective_y = 0;
+                    if (entry != 6) derivative.perspective_x = 0;
+                    if (entry != 7) derivative.scalar_y = 0;
+                    if (entry != 8) derivative.scalar_x = 0;
+                    if (entry != 9) derivative.displace_x = 0;
+                    if (entry != 10) derivative.skew = 0;
+                    info.Add((derivative, error));
+                }
+                double total_error = info.Sum(v => v.Item2);
+                double d_sum = info.Sum(v => v.Item1.square_sum());
+                if (verbose) LogPanel.Log($"average error: { average_pixel_error(total_error)}");
+                //if (double.IsNaN(step_size)) step_size = total_error / d_sum * 0.1;
+                //else step_size = total_error / d_sum * 0.1;
+                for (int i = 0; i < n; i++) cylinder_images[i].save();
+                var restore_all = new Action(() => { for (int i = 0; i < n; i++) cylinder_images[i].restore(); });
+                var apply_change_all = new Func<double, double>(_ =>
+                {
+                    restore_all();
+                    for (int i = 0; i < n; i++) cylinder_images[i].apply_change(info[i].Item1 * -(_ * total_error));
+                    double ans = 0;
+                    for (int i = 0; i < n; i++) ans += cylinder_images[i].get_derivatives(1, all_matches[i]).Item2;
+                    return ans;
+                });
+                double current_error = apply_change_all(-1e-10);
+                apply_change_all(0);
+                return current_error >= total_error;
+            }
+            public bool Refine(int freedom, bool verbose)
+            {
+                ++refine_count;
+                if (verbose) LogPanel.Log($"refining #{refine_count}...");
+                var all_matches = get_all_matches(verbose);
+                int num_error_entries = all_matches.Sum(m => m.Count);
+                double average_focal_length = cylinder_images.Sum(i => i.focal_length) / cylinder_images.Count;
                 var average_pixel_error = new Func<double, double>(error => Math.Sqrt(error / num_error_entries) * average_focal_length);
                 List<(CylinderImage.Transform, double)> info = new List<(CylinderImage.Transform, double)>();
                 for (int i = 0; i < n; i++)
@@ -236,12 +289,7 @@ namespace AutoStitch.Pages
                 }
                 double total_error = info.Sum(v => v.Item2);
                 double d_sum = info.Sum(v => v.Item1.square_sum());
-                if (verbose)
-                {
-                    System.Diagnostics.Trace.WriteLine("number of inliners matrix:");
-                    System.Diagnostics.Trace.WriteLine(sb_inliners.ToString());
-                    LogPanel.Log($"average error: { average_pixel_error(total_error)}");
-                }
+                if (verbose) LogPanel.Log($"average error: { average_pixel_error(total_error)}");
                 //if (double.IsNaN(step_size)) step_size = total_error / d_sum * 0.1;
                 //else step_size = total_error / d_sum * 0.1;
                 for (int i = 0; i < n; i++) cylinder_images[i].save();

@@ -68,6 +68,14 @@ namespace AutoStitch.Pages
                     double inside_tan = (w_term + displace_x) / pq_term / focal_length;
                     double one_x_2 = 1 + inside_tan * inside_tan;
                     (double w1, double h1) = image_point_to_camera(match.Item1.Item1, match.Item1.Item2);
+                    {
+                        (double w_check, double h_check) = (
+                            Utils.Mod2PI(center_direction + Math.Atan((w_term + displace_x) / pq_term / focal_length)),
+                            (h_term + displace_y) / pq_term / fx_term);
+                        double error = Math.Sqrt(Math.Pow(w_check - w1, 2) + Math.Pow(h_check - h1, 2));
+                        if (error >= 1e-9) LogPanel.Log($"w: {w1}→{w_check}, h: {h1}→{h_check}");
+                        System.Diagnostics.Trace.Assert(error < 1e-9);
+                    }
                     (double w2, double h2) = match.Item3.image_point_to_camera(match.Item2.Item1, match.Item2.Item2);
                     if (w2 - w1 > Math.PI) w1 += 2.0 * Math.PI;
                     else if (w1 - w2 > Math.PI) w2 += 2.0 * Math.PI;
