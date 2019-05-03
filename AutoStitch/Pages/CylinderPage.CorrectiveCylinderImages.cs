@@ -21,7 +21,8 @@ namespace AutoStitch.Pages
                      image_provider, points_provider_gen, 7, 0.5, 1), 500) as IPointsProvider;
             }
             public CorrectiveCylinderImages(List<IImageD_Provider> image_providers, int width, int height):base(
-                image_providers.Select(i=>new ImageD_Providers.PlotPoints(i, get_features_provider(i)) as IImageD_Provider).ToList(),
+                image_providers,
+                //image_providers.Select(i=>new ImageD_Providers.PlotPoints(i, get_features_provider(i)) as IImageD_Provider).ToList(),
                 width,height)
             {
                 points_providers = image_providers.Select(img => get_features_provider(img)).ToList();
@@ -161,8 +162,8 @@ namespace AutoStitch.Pages
                     prefix_sum_dy += dy_seq[i];
                 }
             }
-            int refine_count = 0;
-            public bool Refine(bool allow_perspective, bool allow_skew, bool verbose)
+            public int refine_count { get; private set; } = 0;
+            public bool Refine(bool allow_rotation,bool allow_perspective, bool allow_skew, bool verbose)
             {
                 ++refine_count;
                 if (verbose) LogPanel.Log($"refining #{refine_count}...");
@@ -220,6 +221,7 @@ namespace AutoStitch.Pages
                 {
                     var matches = all_matches[i];
                     (CylinderImage.Transform derivative, double error) = cylinder_images[i].get_derivatives(1, matches);
+                    if (!allow_rotation) derivative.rotation_theta = 0;
                     if (!allow_perspective) derivative.perspective_x = derivative.perspective_y = 0;
                     if (!allow_skew) derivative.skew = 0;
                     info.Add((derivative, error));
@@ -250,11 +252,17 @@ namespace AutoStitch.Pages
                 if (multiplier == 1e-9)
                 {
                     double pixel_error = average_pixel_error(apply_change_all(0));
-                    LogPanel.Log($"refine #{refine_count}: cannot improve, pixel error = {pixel_error}");
-                    for (int i = 0; i < n; i++)
+                    if (verbose)
                     {
-                        LogPanel.Log($"derivatives of image[{i}]:");
-                        LogPanel.Log(cylinder_images[i].get_derivatives(1, all_matches[i]).Item1.ToString());
+                        LogPanel.Log($"refine #{refine_count}: cannot improve, pixel error = {pixel_error}");
+                        for (int i = 0; i < n; i++)
+                        {
+                            LogPanel.Log($"derivatives of image[{i}]:");
+                            LogPanel.Log(cylinder_images[i].get_derivatives(1, all_matches[i]).Item1.ToString());
+                        }
+                        this.ResetSelf();
+                        this.GetImageD();
+                        LogPanel.Log($"image shown.");
                     }
                     return false;
                 }
@@ -262,9 +270,9 @@ namespace AutoStitch.Pages
                 double final_error = apply_change_all(multiplier);
                 if (verbose)
                 {
-                    LogPanel.Log($"done. final average error = {average_pixel_error(final_error)}");
                     this.ResetSelf();
                     this.GetImageD();
+                    LogPanel.Log($"done. final average error = {average_pixel_error(final_error)}");
                 }
                 return true;
                 //System.Threading.Thread.Sleep(1000000000);

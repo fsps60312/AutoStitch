@@ -59,44 +59,38 @@ namespace AutoStitch.Pages
             await Task.Run(() =>
             {
                 global_viewer.InitializeOnPlane();
-                bool allow_perspective = false;
-                bool allow_skew = false;
+                // stage1: false false false
+                // stage2: true false false
+                // stage3: false false false (roll back to stage1)
+                // stage4: true true false
+                // stage5: true false false (roll back to stage2)
+                // stage6: false false false (roll back to stage1)
+                // stage7: ...
+                (int,int) prev_stage = (-1,-1);
+                int stage = 0, cached_stage = 0;
                 for (DateTime time = DateTime.MinValue; ;)
                 {
-                    bool verbose = false;
-                    if ((DateTime.Now - time).TotalSeconds > 10) verbose = true;
-                    if (!global_viewer.Refine(allow_perspective, allow_skew, verbose))
+                    if (prev_stage != (stage,cached_stage))
                     {
-                        if (allow_perspective)
-                        {
-                            if (allow_skew)
-                            {
-                                LogPanel.Log("done. generating image...");
-                                global_viewer.ResetSelf();
-                                global_viewer.GetImageD();
-                                time = DateTime.Now;
-                                LogPanel.Log("ok.");
-                                break;
-                            }
-                            else
-                            {
-                                LogPanel.Log($"skew change on.");
-                                global_viewer.ResetSelf();
-                                global_viewer.GetImageD();
-                                time = DateTime.Now;
-                                LogPanel.Log("this is current result without skew changes.");
-                                allow_skew = true;
-                            }
-                        }
-                        else
-                        {
-                            LogPanel.Log($"perspective change on.");
-                            global_viewer.ResetSelf();
-                            global_viewer.GetImageD();
-                            time = DateTime.Now;
-                            LogPanel.Log("this is current result without perspective changes.");
-                            allow_perspective = true;
-                        }
+                        prev_stage = (stage, cached_stage);
+                        LogPanel.Log($"refine #{global_viewer.refine_count+1}: stage: {stage} ← {cached_stage} / 7");
+                    }
+                    bool verbose = false;
+                    if ((DateTime.Now - time).TotalSeconds > 30) verbose = true;
+                    bool result = global_viewer.Refine(stage > 0, stage > 1, stage > 2, verbose);
+                    if (!result)
+                    {
+                        if (stage > 0) stage--;
+                        else stage = cached_stage = cached_stage + 1;
+                    }
+                    else if (stage < cached_stage) cached_stage = stage;
+                    if (stage == 4)
+                    {
+                        System.Diagnostics.Trace.Assert(stage == 7);
+                        LogPanel.Log("done. generating image...");
+                        System.Diagnostics.Trace.Assert(!global_viewer.Refine(true, true, true, true));
+                        LogPanel.Log("ok.");
+                        return;
                     }
                     if (verbose) time = DateTime.Now;
                 }
