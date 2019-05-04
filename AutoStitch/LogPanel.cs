@@ -43,7 +43,7 @@ namespace AutoStitch
         void _Log(MyImageD img)
         {
             pop_children();
-            stackPanel.Children.Add(new Image { MaxHeight = 300, Source = img.ToImage().ToBitmapSource() });
+            stackPanel.Children.Add(new Image { MaxHeight = 300, Source = img.ToImage().ToBitmapSource(), HorizontalAlignment = System.Windows.HorizontalAlignment.Left });
             scrollViewer.ScrollToBottom();
         }
         void _Log(string text)

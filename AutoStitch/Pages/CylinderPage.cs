@@ -49,7 +49,10 @@ namespace AutoStitch.Pages
         async void StartSimulation()
         {
             int kase_self = System.Threading.Interlocked.Increment(ref kase);
-            var global_viewer = new CorrectiveCylinderImages(source_image_panel.GetImages().Select(i => new ImageD_Providers.ImageD_Cache(i.ToImageD()) as IImageD_Provider).ToList(), pixel_width, pixel_height);
+            var image_providers = source_image_panel.GetImages().Select(i => new ImageD_Providers.ImageD_Cache(i.ToImageD()) as IImageD_Provider).ToList();
+            while (image_providers.Any(p => { var i = p.GetImageD(); return i.width * i.height > 1000000; }))
+                image_providers = image_providers.Select(p => new ImageD_Providers.Scale(new ImageD_Providers.GaussianBlur(p, 0.5), 0.5) as IImageD_Provider).ToList();
+            var global_viewer = new CorrectiveCylinderImages(image_providers, pixel_width, pixel_height);
             image_container.Content = new ScrollViewer
             {
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,

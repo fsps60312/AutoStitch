@@ -275,16 +275,16 @@ namespace AutoStitch.Pages
                 {
                     var matches = all_matches[i];
                     (CylinderImage.Transform derivative, double error) = cylinder_images[i].get_derivatives( matches);
-                    if (freedom < 1) derivative.focal_length = 0;
-                    if (freedom < 2) derivative.center_direction = 0;
-                    if (freedom < 3) derivative.displace_y = 0;
-                    if (freedom < 4) derivative.rotation_theta = 0;
-                    if (freedom < 5) derivative.perspective_y = 0;
-                    if (freedom < 6) derivative.perspective_x = 0;
-                    if (freedom < 7) derivative.scalar_y = 0;
-                    if (freedom < 8) derivative.scalar_x = 0;
-                    if (freedom < 9) derivative.displace_x = 0;
-                    if (freedom < 10) derivative.skew = 0;
+                    if (freedom != 1) derivative.focal_length = 0;
+                    if (freedom != 2) derivative.center_direction = 0;
+                    if (freedom != 3) derivative.displace_y = 0;
+                    if (freedom != 4) derivative.rotation_theta = 0;
+                    if (freedom != 5) derivative.perspective_y = 0;
+                    if (freedom != 6) derivative.perspective_x = 0;
+                    if (freedom != 7) derivative.scalar_y = 0;
+                    if (freedom != 8) derivative.scalar_x = 0;
+                    if (freedom != 9) derivative.displace_x = 0;
+                    if (freedom != 10) derivative.skew = 0;
                     info.Add((derivative, error));
                 }
                 double total_error = info.Sum(v => v.Item2);
@@ -339,7 +339,8 @@ namespace AutoStitch.Pages
                 this.ResetSelf();
                 this.GetImageD();
                 LogPanel.Log("searching features...");
-                Parallel.For(0, n, i => { int c = points_providers[i].GetPoints().Count; LogPanel.Log($"{c} features for image {i}"); });
+                int progress = 0;
+                Parallel.For(0, n, i => { int c = points_providers[i].GetPoints().Count; LogPanel.Log($"{c} features for image {i} ({System.Threading.Interlocked.Increment(ref progress)} of {n})"); });
                 points = points_providers.Select(pp => pp.GetPoints().Select(ps => (ps as ImagePoint<PointsProviders.MSOP_DescriptorVector.Descriptor>)).ToList()).ToList();
 
                 setup_image_params();
