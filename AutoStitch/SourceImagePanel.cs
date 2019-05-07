@@ -20,19 +20,35 @@ namespace AutoStitch
                 this.MinHeight = 200;
                 this.MaxHeight = 300;
             }
-            this.Content =is_horizontal? new Grid
+            StackPanel sp = new StackPanel
             {
-                ColumnDefinitions=
+                Orientation = is_horizontal ? Orientation.Vertical : Orientation.Horizontal,
+                Children =
+                {
+                    new Button
+                    {
+                        Content="Open"
+                    }.Set(()=>OpenImages()),
+                    new Button
+                    {
+                        Content="⟳"
+                    }.Set(()=>
+                    {
+                        for(int i=0;i<images.Count;i++) images[i]=images[i].RotateClockwise();
+                        ShowImages();
+                    })
+                }
+            };
+            this.Content = is_horizontal ? new Grid
+            {
+                ColumnDefinitions =
                 {
                     new ColumnDefinition{Width=new GridLength(1,GridUnitType.Auto)},
                     new ColumnDefinition{Width=new GridLength(1,GridUnitType.Star)}
                 },
                 Children =
                 {
-                    new Button
-                    {
-                        Content="Open"
-                    }.Set(()=>OpenImages()).Set(0,0),
+                    sp.Set(0,0),
                     new ScrollViewer
                     {
                         HorizontalScrollBarVisibility = ScrollBarVisibility.Visible,
@@ -40,7 +56,7 @@ namespace AutoStitch
                         Content = (stackPanel = new StackPanel { Orientation = Orientation.Horizontal})
                     }.Set(0,1)
                 }
-            }:new Grid
+            } : new Grid
             {
                 RowDefinitions =
                 {
@@ -49,10 +65,7 @@ namespace AutoStitch
                 },
                 Children =
                 {
-                    new Button
-                    {
-                        Content="Open"
-                    }.Set(()=>OpenImages()).Set(0,0),
+                    sp.Set(0,0),
                     new ScrollViewer
                     {
                         HorizontalScrollBarVisibility =ScrollBarVisibility.Disabled,

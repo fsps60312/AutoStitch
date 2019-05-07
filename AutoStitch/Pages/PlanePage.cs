@@ -141,21 +141,33 @@ namespace AutoStitch.Pages
                 var get_displacement = new Func<int, int, Tuple<double, double,int>>((i, j) =>
                      {
                          List<ImagePoint<PointsProviders.MSOP_DescriptorVector.Descriptor>> p1s = points[i], p2s = points[j];
-                         List<Tuple<double, double>> candidates = new List<Tuple<double, double>>();
+                         List<Tuple<double, double, double, double>> candidates = new List<Tuple<double, double, double, double>>();
                          Parallel.For(0, p1s.Count, _ =>
                            {
                                var p1 = p1s[_];
                                if (p1.content.try_match(p2s, out ImagePoint p2))
                                {
                                    IImageD_Provider me = image_providers[i], other = image_providers[j];
-                                   double dx = (p2.x - 0.5 * other.GetImageD().width) - (p1.x - 0.5 * me.GetImageD().width);
-                                   double dy = (p2.y - 0.5 * other.GetImageD().height) - (p1.y - 0.5 * me.GetImageD().height);
-                                   lock (candidates) candidates.Add(new Tuple<double, double>(dx, dy));
-                                 //candidates.Add(Tuple.Create(p1.content.difference((p2 as ImagePoint<PointsProviders.MSOP_DescriptorVector.Descriptor>).content), p1.x, p1.y, p2.x, p2.y));
-                             }
+                                   lock (candidates) candidates.Add(new Tuple<double, double, double, double>(
+                                     p1.x - 0.5 * me.GetImageD().width,
+                                     p1.y - 0.5 * me.GetImageD().height,
+                                     p2.x - 0.5 * other.GetImageD().width,
+                                     p2.y - 0.5 * other.GetImageD().height));
+                                   //candidates.Add(Tuple.Create(p1.content.difference((p2 as ImagePoint<PointsProviders.MSOP_DescriptorVector.Descriptor>).content), p1.x, p1.y, p2.x, p2.y));
+                               }
                            });
-                         var ans= Utils.Vote(candidates, 10, out int max_num_inliners);
-                         return new Tuple<double, double, int>(ans.Item1, ans.Item2, max_num_inliners);
+                         var ans = Utils.VoteInliners(candidates, 10);
+                         return new Tuple<double, double, int>(
+                             ans.Average(_ =>
+                             {
+                                 var v = candidates[_];
+                                 return v.Item3 - v.Item1;
+                             }),
+                             ans.Average(_ =>
+                             {
+                                 var v = candidates[_];
+                                 return v.Item4 - v.Item2;
+                             }), ans.Count);
                      });
                 {
                     bool[] vis = new bool[n];

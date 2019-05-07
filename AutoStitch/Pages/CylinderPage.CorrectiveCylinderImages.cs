@@ -11,14 +11,14 @@ namespace AutoStitch.Pages
         {
             List<IPointsProvider> points_providers;
             private int n { get { return cylinder_images.Count; } }
-            const int min_num_inliners = 10;
+            const int min_num_inliners = 25;
             static IPointsProvider get_features_provider(IImageD_Provider image_provider)
             {
                 var points_provider_gen = new Func<IImageD_Provider, IPointsProvider<PointsProviders.MSOP_DescriptorVector.Descriptor>>(
                          i => new PointsProviders.MSOP_DescriptorVector(new PointsProviders.HarrisCornerDetector(i), new MatrixProviders.GrayScale(i)));
                 return new PointsProviders.AdaptiveNonmaximalSuppression(
                     new PointsProviders.MultiScaleFeaturePoints<PointsProviders.MSOP_DescriptorVector.Descriptor>(
-                     image_provider, points_provider_gen, 7, 0.5, 1), 500) as IPointsProvider;
+                     image_provider, points_provider_gen, 7, 0.5, 1), 1000) as IPointsProvider;
             }
             public CorrectiveCylinderImages(List<IImageD_Provider> image_providers, int width, int height):base(
                 image_providers,
@@ -41,32 +41,58 @@ namespace AutoStitch.Pages
             }
             List<List<ImagePoint<PointsProviders.MSOP_DescriptorVector.Descriptor>>> points;
             List<int>[,] points_match_list_cache = null;
+            object points_match_list_cache_sync = new object();
             private List<int>points_match_list(int i,int j)
             {
                 System.Diagnostics.Trace.Assert(0 <= i && i < n && 0 <= j && j < n);
-                if (points_match_list_cache == null) points_match_list_cache = new List<int>[n, n];
-                if (points_match_list_cache[i, j] == null) points_match_list_cache[i, j] = PointsProviders.MSOP_DescriptorVector.Descriptor.try_match(points[i], points[j]);
+                lock (points_match_list_cache_sync)
+                {
+                    if (points_match_list_cache == null) points_match_list_cache = new List<int>[n, n];
+                    if (points_match_list_cache[i, j] == null) points_match_list_cache[i, j] = PointsProviders.MSOP_DescriptorVector.Descriptor.try_match(points[i], points[j]);
+                }
                 return points_match_list_cache[i, j];
             }
+            Tuple<double, double, int>[,] get_displacement_cache = null;
+            object get_displacement_cache_sync = new object();
             private Tuple<double, double, int> get_displacement(int i, int j)
             {
-                List<int> matches = points_match_list(i, j);
-                List<Tuple<double, double>> candidates = new List<Tuple<double, double>>();
-                for (int _ = 0; _ < matches.Count; _++)
+                lock (get_displacement_cache_sync)
                 {
-                    if (matches[_] != -1)
+                    if (get_displacement_cache == null) get_displacement_cache = new Tuple<double, double, int>[n, n];
+                    if (get_displacement_cache[i, j] == null)
                     {
-                        var p1 = points[i][_];
-                        var p2 = points[j][matches[_]];
-                        IImageD_Provider me = image_providers[i], other = image_providers[j];
-                        double dx = (p1.x - 0.5 * me.GetImageD().width) - (p2.x - 0.5 * other.GetImageD().width);
-                        double dy = (p1.y - 0.5 * me.GetImageD().height) - (p2.y - 0.5 * other.GetImageD().height);
-                        candidates.Add(new Tuple<double, double>(dx, dy));
+                        List<int> matches = points_match_list(i, j);
+                        List<Tuple<double, double, double, double>> candidates = new List<Tuple<double, double, double, double>>();
+                        for (int _ = 0; _ < matches.Count; _++)
+                        {
+                            if (matches[_] != -1)
+                            {
+                                var p1 = points[i][_];
+                                var p2 = points[j][matches[_]];
+                                IImageD_Provider me = image_providers[i], other = image_providers[j];
+                                candidates.Add(new Tuple<double, double, double, double>(
+                                    p1.x - 0.5 * me.GetImageD().width,
+                                    p1.y - 0.5 * me.GetImageD().height,
+                                    p2.x - 0.5 * other.GetImageD().width,
+                                    p2.y - 0.5 * other.GetImageD().height));
+                            }
+                        }
+                        //LogPanel.Log($"candidate.count={candidates.Count}");
+                        var ans = Utils.VoteInliners(candidates, 10);
+                        get_displacement_cache[i, j] = new Tuple<double, double, int>(
+                            ans.Average(_ =>
+                            {
+                                var v = candidates[_];
+                                return v.Item1 - v.Item3;
+                            }),
+                            ans.Average(_ =>
+                            {
+                                var v = candidates[_];
+                                return v.Item2 - v.Item4;
+                            }), ans.Count);
                     }
                 }
-                //LogPanel.Log($"candidate.count={candidates.Count}");
-                var ans = Utils.Vote(candidates, 10, out int max_num_inliners);
-                return new Tuple<double, double, int>(ans.Item1, ans.Item2, max_num_inliners);
+                return get_displacement_cache[i, j];
             }
             List<int> cycle;
             List<double> dx_seq;
@@ -162,8 +188,14 @@ namespace AutoStitch.Pages
                     prefix_sum_dy += dy_seq[i];
                 }
             }
+            //List<List<Tuple<Tuple<double, double>, Tuple<double, double>, CylinderImage>>> get_all_matches_cache = null;
+            //object get_all_matches_sync = new object();
             private List<List<Tuple<Tuple<double, double>, Tuple<double, double>, CylinderImage>>> get_all_matches(bool verbose)
             {
+                //lock (get_all_matches_sync)
+                //{
+                //    if (get_all_matches_cache == null)
+                //    {
                 System.Text.StringBuilder sb_inliners = new System.Text.StringBuilder();
                 double average_focal_length = cylinder_images.Sum(i => i.focal_length) / cylinder_images.Count;
                 List<List<Tuple<Tuple<double, double>, Tuple<double, double>, CylinderImage>>> all_matches = new List<List<Tuple<Tuple<double, double>, Tuple<double, double>, CylinderImage>>>();
@@ -216,6 +248,10 @@ namespace AutoStitch.Pages
                     System.Diagnostics.Trace.WriteLine("number of inliners matrix:");
                     System.Diagnostics.Trace.WriteLine(sb_inliners.ToString());
                 }
+                //        get_all_matches_cache = all_matches;
+                //    }
+                //}
+                //return get_all_matches_cache;
                 return all_matches;
             }
             public int refine_count { get; private set; } = 0;
@@ -231,12 +267,12 @@ namespace AutoStitch.Pages
                 {
                     var matches = all_matches[i];
                     (CylinderImage.Transform derivative, double error) = cylinder_images[i].get_derivatives(matches);
-                    if (entry != 1) derivative.focal_length = 0;
-                    if (entry != 2) derivative.center_direction = 0;
-                    if (entry != 3) derivative.displace_y = 0;
-                    if (entry != 4) derivative.rotation_theta = 0;
-                    if (entry != 5) derivative.perspective_y = 0;
-                    if (entry != 6) derivative.perspective_x = 0;
+                    if (entry != 1) derivative.center_direction = 0;
+                    if (entry != 2) derivative.displace_y = 0;
+                    if (entry != 3) derivative.rotation_theta = 0;
+                    if (entry != 4) derivative.perspective_y = 0;
+                    if (entry != 5) derivative.perspective_x = 0;
+                    if (entry != 6) derivative.focal_length = 0;
                     if (entry != 7) derivative.scalar_y = 0;
                     if (entry != 8) derivative.scalar_x = 0;
                     if (entry != 9) derivative.displace_x = 0;
@@ -275,11 +311,21 @@ namespace AutoStitch.Pages
                 {
                     var matches = all_matches[i];
                     (CylinderImage.Transform derivative, double error) = cylinder_images[i].get_derivatives( matches);
-                    if (freedom != 1) derivative.focal_length = 0;
-                    if (freedom != 2) derivative.center_direction = 0;
-                    if (freedom != 3) derivative.displace_y = 0;
-                    if (freedom != 4) derivative.rotation_theta = 0;
-                    if (freedom != 5) derivative.perspective_y = 0;
+                    //if (freedom != 1) derivative.center_direction = 0;
+                    //if (freedom != 2) derivative.displace_y = 0;
+                    //if (freedom != 3) derivative.rotation_theta = 0;
+                    //if (freedom != 4) derivative.perspective_y = 0;
+                    //if (freedom != 5) derivative.focal_length = 0;
+                    //if (freedom != 6) derivative.perspective_x = 0;
+                    //if (freedom != 7) derivative.scalar_y = 0;
+                    //if (freedom != 8) derivative.scalar_x = 0;
+                    //if (freedom != 9) derivative.displace_x = 0;
+                    //if (freedom != 10) derivative.skew = 0;
+                    if (freedom != 1) derivative.center_direction = 0;
+                    if (freedom != 2) derivative.displace_y = 0;
+                    if (freedom != 3) derivative.rotation_theta = 0;
+                    if (freedom != 4) derivative.perspective_y = 0;
+                    if (freedom != 5) derivative.focal_length = 0;
                     if (freedom != 6) derivative.perspective_x = 0;
                     if (freedom != 7) derivative.scalar_y = 0;
                     if (freedom != 8) derivative.scalar_x = 0;
@@ -335,7 +381,7 @@ namespace AutoStitch.Pages
             }
             public void InitializeOnPlane()
             {
-                Parallel.For(0, n, i => image_providers[i].GetImageD());
+                Parallel.For(0, n, i => { image_providers[i].ResetSelf(); image_providers[i].GetImageD(); });
                 this.ResetSelf();
                 this.GetImageD();
                 LogPanel.Log("searching features...");

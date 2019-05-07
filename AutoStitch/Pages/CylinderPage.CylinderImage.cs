@@ -355,8 +355,9 @@ namespace AutoStitch.Pages
                 (double x, double y) = camera_to_image_point(w, h);
                 bool sampled = image.sample(x, y, out r, out g, out b);
                 distance_to_corner = sampled ?
-                    Math.Min(Math.Min(image.height - 1 - y, image.width - 1 - x), Math.Min(x, y)) :
+                    Math.Min(Math.Min(image.height - 1 - y, image.width - 1 - x), Math.Min(x, y))+1 :
                     double.NaN;
+                //if (sampled&&distance_to_corner>1e-9) System.Windows.MessageBox.Show($"r:{r}, g:{g}, b:{b}, dis:{distance_to_corner}");
                 return sampled;
             }
         }
