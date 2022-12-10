@@ -54,9 +54,21 @@ namespace AutoStitch
                 Console.WriteLine($"found {devicesList.Count} device(s)");
                 foreach (var device in devicesList)
                 {
-                    var buffer = CL.Cl.GetDeviceInfo(device, CL.DeviceInfo.Name, out error);
-                    CheckErr(error, "Cl.GetDeviceInfo");
-                    Console.WriteLine($"\t{buffer}");
+                    {
+                        var buffer = CL.Cl.GetDeviceInfo(device, CL.DeviceInfo.Name, out error);
+                        CheckErr(error, "Cl.GetDeviceInfo");
+                        Console.WriteLine($"\t{buffer}");
+                    }
+                    {
+                        var buffer = CL.Cl.GetDeviceInfo(device, CL.DeviceInfo.Extensions, out error);
+                        CheckErr(error, "Cl.GetDeviceInfo");
+                        Console.WriteLine($"\t{buffer}");
+                    }
+                    {
+                        var buffer = CL.Cl.GetDeviceInfo(device, CL.DeviceInfo.Version, out error);
+                        CheckErr(error, "Cl.GetDeviceInfo");
+                        Console.WriteLine($"\t{buffer}");
+                    }
                 }
 
                 _device = devicesList[0];
